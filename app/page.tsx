@@ -149,15 +149,15 @@ export default function Home() {
 
   return (
     <div className="w-full h-screen flex items-center justify-center bg-black relative">
-      <div className="relative w-full max-w-[640px] aspect-video">
+      <div className="relative w-full aspect-video">
         <video
           ref={videoRef}
-          className="absolute w-full h-full object-contain"
+          className="absolute w-full h-full object-cover"
           style={{
             transform: "scaleX(-1)",
             width: "100%",
             height: "100%",
-            objectFit: "contain",
+            objectFit: "cover",
           }}
           autoPlay
           muted
@@ -165,12 +165,12 @@ export default function Home() {
         />
         <canvas
           ref={canvasRef}
-          className="absolute w-full h-full object-contain"
+          className="absolute w-full h-full object-cover"
           style={{
             pointerEvents: "none",
             width: "100%",
             height: "100%",
-            objectFit: "contain",
+            objectFit: "cover",
           }}
         />
       </div>
