@@ -138,8 +138,8 @@ export default function Home() {
 
         ctx.save();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.scale(-1, 1);
-        ctx.translate(-canvas.width, 0);
+        // ctx.scale(-1, 1);
+        // ctx.translate(-canvas.width, 0);
 
         poses.forEach((pose) => {
           const lm = pose.keypoints;
