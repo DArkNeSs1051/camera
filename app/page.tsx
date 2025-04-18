@@ -40,32 +40,35 @@ export default function Home() {
       const video = videoRef.current;
       const canvas = canvasRef.current;
       const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      if (!ctx) {
+        console.warn("Canvas context not found");
+        return;
+      }
 
       const render = async () => {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
         const poses = await detectorRef.current!.estimatePoses(video);
+        console.log("poses", poses);
+
         ctx.save();
-
-        // Clear และ mirror canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.scale(-1, 1); // mirror แกน X
-        ctx.translate(-canvas.width, 0); // ย้ายกลับมาด้านซ้าย
+        ctx.scale(-1, 1);
+        ctx.translate(-canvas.width, 0);
 
-        for (const pose of poses) {
-          for (const keypoint of pose.keypoints) {
-            if (keypoint.score && keypoint.score > 0.4) {
+        poses.forEach((pose) => {
+          pose.keypoints.forEach((keypoint) => {
+            if (keypoint.score && keypoint.score > 0.2) {
               ctx.beginPath();
               ctx.arc(keypoint.x, keypoint.y, 6, 0, 2 * Math.PI);
               ctx.fillStyle = "#00FF00";
               ctx.fill();
             }
-          }
-        }
+          });
+        });
 
-        ctx.restore(); // restore สภาพเดิม
+        ctx.restore();
         requestAnimationFrame(render);
       };
 
