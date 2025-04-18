@@ -149,7 +149,7 @@ export default function Home() {
 
   return (
     <div className="w-full h-screen flex items-center justify-center bg-black relative">
-      <div className="relative w-full aspect-video">
+      <div className="relative w-full h-full aspect-video">
         <video
           ref={videoRef}
           className="absolute w-full h-full object-cover"
