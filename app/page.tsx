@@ -12,25 +12,55 @@ export default function Home() {
 
   useEffect(() => {
     const init = async () => {
-      await tf.setBackend("webgl");
-      console.log("Backend initialized:", tf.getBackend());
-      await tf.ready();
+      try {
+        // 🔧 Force WebGL backend พร้อม debug config
+        tf.env().set("WEBGL_CPU_FORWARD", false);
+        tf.env().set("WEBGL_PACK", true);
+        tf.env().set("WEBGL_VERSION", 1); // ลองใช้ WebGL1 แทน WebGL2
 
-      const detector = await posedetection.createDetector(
-        posedetection.SupportedModels.MoveNet,
-        {
-          modelType: posedetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
+        await tf.setBackend("webgl");
+        await tf.ready();
+
+        const backend = tf.getBackend();
+        console.log("✅ TF backend in use:", backend);
+
+        // 🔍 เช็คว่า backend ใช้ webgl จริงไหม
+        if (backend !== "webgl") {
+          throw new Error("WebGL backend not active, fallback in progress");
         }
-      );
-      detectorRef.current = detector;
 
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current?.play();
-          detectPose();
-        };
+        // ✅ สร้าง detector
+        const detector = await posedetection.createDetector(
+          posedetection.SupportedModels.MoveNet,
+          {
+            modelType: posedetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
+          }
+        );
+        detectorRef.current = detector;
+
+        // ✅ เปิดกล้อง
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+        });
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.onloadedmetadata = () => {
+            videoRef.current?.play();
+            detectPose();
+          };
+        }
+      } catch (err) {
+        console.warn(
+          "❌ WebGL failed or not supported, switching to CPU...",
+          err
+        );
+        await tf.setBackend("cpu");
+        await tf.ready();
+        console.log("🧠 TF fallback to:", tf.getBackend());
+
+        alert(
+          "⚠️ อุปกรณ์นี้ไม่รองรับ WebGL สำหรับ TensorFlow.js\nระบบจะเปลี่ยนไปใช้ CPU ซึ่งอาจช้าลง"
+        );
       }
     };
 
@@ -41,17 +71,14 @@ export default function Home() {
       const video = videoRef.current;
       const canvas = canvasRef.current;
       const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        console.warn("Canvas context not found");
-        return;
-      }
+      if (!ctx) return;
 
       const render = async () => {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
 
         const poses = await detectorRef.current!.estimatePoses(video);
-        console.log("poses", poses);
+        console.log("🎯 poses", poses);
 
         ctx.save();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
