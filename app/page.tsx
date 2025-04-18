@@ -14,22 +14,19 @@ export default function Home() {
   const isDown = useRef(false);
   const lastDetectedPose = useRef<string | null>(null);
   let lastCountTime = 0;
-  const COUNT_DELAY = 800; // ms
+  const COUNT_DELAY = 800;
 
   interface Point {
     x: number;
     y: number;
   }
 
-  const canCountNow = () => {
-    return Date.now() - lastCountTime > COUNT_DELAY;
-  };
+  const canCountNow = () => Date.now() - lastCountTime > COUNT_DELAY;
 
-  const isValidLandmarks = (...points: (Point | undefined)[]): boolean => {
-    return points.every(
+  const isValidLandmarks = (...points: (Point | undefined)[]) =>
+    points.every(
       (p) => p && typeof p.x === "number" && typeof p.y === "number"
     );
-  };
 
   const getAngle = (p1: Point, p2: Point, p3: Point): number => {
     const radians =
@@ -51,13 +48,11 @@ export default function Home() {
     const leftKnee = lm[25];
     const leftAnkle = lm[27];
 
-    // Push-up Detection
+    // Push-up
     if (isValidLandmarks(leftShoulder, leftElbow, leftWrist)) {
-      const pushupAngle = getAngle(leftShoulder, leftElbow, leftWrist);
-      if (pushupAngle < 70 && !isDown.current) {
-        isDown.current = true;
-      }
-      if (pushupAngle > 160 && isDown.current && canCountNow()) {
+      const angle = getAngle(leftShoulder, leftElbow, leftWrist);
+      if (angle < 70 && !isDown.current) isDown.current = true;
+      if (angle > 160 && isDown.current && canCountNow()) {
         count.current++;
         isDown.current = false;
         lastCountTime = Date.now();
@@ -65,13 +60,11 @@ export default function Home() {
       }
     }
 
-    // Squat Detection
+    // Squat
     if (isValidLandmarks(leftHip, leftKnee, leftAnkle)) {
-      const squatAngle = getAngle(leftHip, leftKnee, leftAnkle);
-      if (squatAngle < 90 && !isDown.current) {
-        isDown.current = true;
-      }
-      if (squatAngle > 160 && isDown.current && canCountNow()) {
+      const angle = getAngle(leftHip, leftKnee, leftAnkle);
+      if (angle < 90 && !isDown.current) isDown.current = true;
+      if (angle > 160 && isDown.current && canCountNow()) {
         count.current++;
         isDown.current = false;
         lastCountTime = Date.now();
@@ -79,7 +72,6 @@ export default function Home() {
       }
     }
 
-    // อัปเดต UI
     const nameEl = document.getElementById("exerciseName");
     const countEl = document.getElementById("repCounter");
     if (nameEl) nameEl.innerText = lastDetectedPose.current ?? "-";
@@ -88,20 +80,12 @@ export default function Home() {
 
   useEffect(() => {
     const init = async () => {
-      // 🔧 Force WebGL backend พร้อม debug config
       tf.env().set("WEBGL_CPU_FORWARD", false);
       tf.env().set("WEBGL_PACK", true);
-      tf.env().set("WEBGL_VERSION", 1); // ลองใช้ WebGL1 แทน WebGL2
+      tf.env().set("WEBGL_VERSION", 1);
 
       await tf.setBackend("webgl");
       await tf.ready();
-
-      const backend = tf.getBackend();
-
-      // 🔍 เช็คว่า backend ใช้ webgl จริงไหม
-      if (backend !== "webgl") {
-        throw new Error("WebGL backend not active, fallback in progress");
-      }
 
       const detector = await posedetection.createDetector(
         posedetection.SupportedModels.MoveNet,
@@ -128,24 +112,25 @@ export default function Home() {
       if (!ctx || !detectorRef.current) return;
 
       const render = async () => {
-        // ✅ Resize canvas to match video frame size exactly
+        if (!video || !canvas || !ctx || !detectorRef.current) return;
+
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
 
-        if (!detectorRef.current) return;
-        const poses = await detectorRef.current.estimatePoses(video);
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+        const poses = await detectorRef.current!.estimatePoses(video);
         ctx.save();
-        ctx.scale(-1, 1);
-        ctx.translate(-canvas.width, 0);
+
+        // Clear และ mirror canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.scale(-1, 1); // mirror แกน X
+        ctx.translate(-canvas.width, 0); // ย้ายกลับมาด้านซ้าย
 
         poses.forEach((pose) => {
           pose.keypoints.forEach((keypoint) => {
-            if (keypoint.score !== undefined && keypoint.score > 0.3) {
+            if (keypoint.score && keypoint.score > 0.4) {
               ctx.beginPath();
-              ctx.arc(keypoint.x, keypoint.y, 5, 0, Math.PI * 2);
-              ctx.fillStyle = "lime";
+              ctx.arc(keypoint.x, keypoint.y, 6, 0, 2 * Math.PI);
+              ctx.fillStyle = "#00FF00";
               ctx.fill();
             }
           });
@@ -164,18 +149,32 @@ export default function Home() {
 
   return (
     <div className="w-full h-screen flex items-center justify-center bg-black relative">
-      <video
-        ref={videoRef}
-        className="absolute w-full h-full z-0"
-        style={{ objectFit: "cover", transform: "scaleX(-1)" }}
-        muted
-        playsInline
-      />
-      <canvas
-        ref={canvasRef}
-        className="absolute w-full h-full z-10 pointer-events-none"
-        style={{ objectFit: "cover" }}
-      />
+      <div className="relative w-full max-w-[640px] aspect-video">
+        <video
+          ref={videoRef}
+          className="absolute w-full h-full object-contain"
+          style={{
+            transform: "scaleX(-1)",
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+          }}
+          autoPlay
+          muted
+          playsInline
+        />
+        <canvas
+          ref={canvasRef}
+          className="absolute w-full h-full object-contain"
+          style={{
+            pointerEvents: "none",
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+          }}
+        />
+      </div>
+
       <div className="absolute top-5 left-5 z-20 bg-black/50 text-white rounded p-4 space-y-2">
         <div className="text-xl">
           ท่าปัจจุบัน:{" "}
