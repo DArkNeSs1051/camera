@@ -88,8 +88,20 @@ export default function Home() {
 
   useEffect(() => {
     const init = async () => {
+      // 🔧 Force WebGL backend พร้อม debug config
+      tf.env().set("WEBGL_CPU_FORWARD", false);
+      tf.env().set("WEBGL_PACK", true);
+      tf.env().set("WEBGL_VERSION", 1); // ลองใช้ WebGL1 แทน WebGL2
+
       await tf.setBackend("webgl");
       await tf.ready();
+
+      const backend = tf.getBackend();
+
+      // 🔍 เช็คว่า backend ใช้ webgl จริงไหม
+      if (backend !== "webgl") {
+        throw new Error("WebGL backend not active, fallback in progress");
+      }
 
       const detector = await posedetection.createDetector(
         posedetection.SupportedModels.MoveNet,
