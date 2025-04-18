@@ -147,8 +147,11 @@ export default function Home() {
 
           lm.forEach((keypoint) => {
             if (keypoint.score != null && keypoint.score > 0.3) {
+              const adjustedX = canvas.width - keypoint.x; // แปลงพิกัด X ให้ตรงกับวิดีโอที่ถูกพลิก
+              const adjustedY = keypoint.y; // Y ไม่ต้องแปลง เพราะไม่ได้มีการพลิกแนวตั้ง
+
               ctx.beginPath();
-              ctx.arc(keypoint.x, keypoint.y, 5, 0, 2 * Math.PI);
+              ctx.arc(adjustedX, adjustedY, 5, 0, 2 * Math.PI);
               ctx.fillStyle = "lime";
               ctx.fill();
             }
