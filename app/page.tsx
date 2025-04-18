@@ -122,40 +122,34 @@ export default function Home() {
     };
 
     const detectPose = async () => {
-      if (!videoRef.current || !canvasRef.current || !detectorRef.current)
-        return;
-
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
+      const video = videoRef.current!;
+      const canvas = canvasRef.current!;
       const ctx = canvas.getContext("2d");
-      if (!ctx) return;
+      if (!ctx || !detectorRef.current) return;
 
       const render = async () => {
+        // ✅ Resize canvas to match video frame size exactly
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
 
-        const poses = await detectorRef.current!.estimatePoses(video);
+        if (!detectorRef.current) return;
+        const poses = await detectorRef.current.estimatePoses(video);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         ctx.save();
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        // ctx.scale(-1, 1);
-        // ctx.translate(-canvas.width, 0);
+        ctx.scale(-1, 1);
+        ctx.translate(-canvas.width, 0);
 
         poses.forEach((pose) => {
-          const lm = pose.keypoints;
-          detectExercise(lm);
-
-          lm.forEach((keypoint) => {
-            if (keypoint.score != null && keypoint.score > 0.3) {
-              const adjustedX = canvas.width - keypoint.x; // แปลงพิกัด X ให้ตรงกับวิดีโอที่ถูกพลิก
-              const adjustedY = keypoint.y; // Y ไม่ต้องแปลง เพราะไม่ได้มีการพลิกแนวตั้ง
-
+          pose.keypoints.forEach((keypoint) => {
+            if (keypoint.score !== undefined && keypoint.score > 0.3) {
               ctx.beginPath();
-              ctx.arc(adjustedX, adjustedY, 5, 0, 2 * Math.PI);
+              ctx.arc(keypoint.x, keypoint.y, 5, 0, Math.PI * 2);
               ctx.fillStyle = "lime";
               ctx.fill();
             }
           });
+          detectExercise(pose.keypoints);
         });
 
         ctx.restore();
