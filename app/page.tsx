@@ -10,57 +10,102 @@ export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const detectorRef = useRef<posedetection.PoseDetector | null>(null);
 
+  const count = useRef(0);
+  const isDown = useRef(false);
+  const lastDetectedPose = useRef<string | null>(null);
+  let lastCountTime = 0;
+  const COUNT_DELAY = 800; // ms
+
+  interface Point {
+    x: number;
+    y: number;
+  }
+
+  const canCountNow = () => {
+    return Date.now() - lastCountTime > COUNT_DELAY;
+  };
+
+  const isValidLandmarks = (...points: (Point | undefined)[]): boolean => {
+    return points.every(
+      (p) => p && typeof p.x === "number" && typeof p.y === "number"
+    );
+  };
+
+  const getAngle = (p1: Point, p2: Point, p3: Point): number => {
+    const radians =
+      Math.atan2(p3.y - p2.y, p3.x - p2.x) -
+      Math.atan2(p1.y - p2.y, p1.x - p2.x);
+    let angle = Math.abs(radians * (180 / Math.PI));
+    if (angle > 180) angle = 360 - angle;
+    return angle;
+  };
+
+  const detectExercise = (lm: any[]) => {
+    if (!lm || lm.length < 33) return;
+
+    const leftShoulder = lm[11];
+    const leftElbow = lm[13];
+    const leftWrist = lm[15];
+
+    const leftHip = lm[23];
+    const leftKnee = lm[25];
+    const leftAnkle = lm[27];
+
+    // Push-up Detection
+    if (isValidLandmarks(leftShoulder, leftElbow, leftWrist)) {
+      const pushupAngle = getAngle(leftShoulder, leftElbow, leftWrist);
+      if (pushupAngle < 70 && !isDown.current) {
+        isDown.current = true;
+      }
+      if (pushupAngle > 160 && isDown.current && canCountNow()) {
+        count.current++;
+        isDown.current = false;
+        lastCountTime = Date.now();
+        lastDetectedPose.current = "Push-up";
+      }
+    }
+
+    // Squat Detection
+    if (isValidLandmarks(leftHip, leftKnee, leftAnkle)) {
+      const squatAngle = getAngle(leftHip, leftKnee, leftAnkle);
+      if (squatAngle < 90 && !isDown.current) {
+        isDown.current = true;
+      }
+      if (squatAngle > 160 && isDown.current && canCountNow()) {
+        count.current++;
+        isDown.current = false;
+        lastCountTime = Date.now();
+        lastDetectedPose.current = "Squat";
+      }
+    }
+
+    // อัปเดต UI
+    const nameEl = document.getElementById("exerciseName");
+    const countEl = document.getElementById("repCounter");
+    if (nameEl) nameEl.innerText = lastDetectedPose.current ?? "-";
+    if (countEl) countEl.innerText = `${count.current}`;
+  };
+
   useEffect(() => {
     const init = async () => {
-      try {
-        // 🔧 Force WebGL backend พร้อม debug config
-        tf.env().set("WEBGL_CPU_FORWARD", false);
-        tf.env().set("WEBGL_PACK", true);
-        tf.env().set("WEBGL_VERSION", 1); // ลองใช้ WebGL1 แทน WebGL2
+      await tf.setBackend("webgl");
+      await tf.ready();
 
-        await tf.setBackend("webgl");
-        await tf.ready();
-
-        const backend = tf.getBackend();
-        console.log("✅ TF backend in use:", backend);
-
-        // 🔍 เช็คว่า backend ใช้ webgl จริงไหม
-        if (backend !== "webgl") {
-          throw new Error("WebGL backend not active, fallback in progress");
+      const detector = await posedetection.createDetector(
+        posedetection.SupportedModels.MoveNet,
+        {
+          modelType: posedetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
         }
+      );
+      detectorRef.current = detector;
 
-        // ✅ สร้าง detector
-        const detector = await posedetection.createDetector(
-          posedetection.SupportedModels.MoveNet,
-          {
-            modelType: posedetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
-          }
-        );
-        detectorRef.current = detector;
-
-        // ✅ เปิดกล้อง
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-        });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.onloadedmetadata = () => {
-            videoRef.current?.play();
-            detectPose();
-          };
-        }
-      } catch (err) {
-        console.warn(
-          "❌ WebGL failed or not supported, switching to CPU...",
-          err
-        );
-        await tf.setBackend("cpu");
-        await tf.ready();
-        console.log("🧠 TF fallback to:", tf.getBackend());
-
-        alert(
-          "⚠️ อุปกรณ์นี้ไม่รองรับ WebGL สำหรับ TensorFlow.js\nระบบจะเปลี่ยนไปใช้ CPU ซึ่งอาจช้าลง"
-        );
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play();
+          detectPose();
+        };
       }
     };
 
@@ -78,7 +123,6 @@ export default function Home() {
         canvas.height = video.videoHeight;
 
         const poses = await detectorRef.current!.estimatePoses(video);
-        console.log("🎯 poses", poses);
 
         ctx.save();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -86,11 +130,14 @@ export default function Home() {
         ctx.translate(-canvas.width, 0);
 
         poses.forEach((pose) => {
-          pose.keypoints.forEach((keypoint) => {
-            if (keypoint.score && keypoint.score > 0.2) {
+          const lm = pose.keypoints;
+          detectExercise(lm);
+
+          lm.forEach((keypoint) => {
+            if (keypoint.score != null && keypoint.score > 0.3) {
               ctx.beginPath();
-              ctx.arc(keypoint.x, keypoint.y, 6, 0, 2 * Math.PI);
-              ctx.fillStyle = "#00FF00";
+              ctx.arc(keypoint.x, keypoint.y, 5, 0, 2 * Math.PI);
+              ctx.fillStyle = "lime";
               ctx.fill();
             }
           });
@@ -111,24 +158,29 @@ export default function Home() {
       <video
         ref={videoRef}
         className="absolute w-full h-full z-0"
-        style={{
-          width: "100%",
-          height: "100%",
-          objectFit: "contain",
-          transform: "scaleX(-1)",
-        }}
+        style={{ objectFit: "cover", transform: "scaleX(-1)" }}
         muted
         playsInline
       />
       <canvas
         ref={canvasRef}
         className="absolute w-full h-full z-10 pointer-events-none"
-        style={{
-          width: "100%",
-          height: "100%",
-          objectFit: "contain",
-        }}
+        style={{ objectFit: "cover" }}
       />
+      <div className="absolute top-5 left-5 z-20 bg-black/50 text-white rounded p-4 space-y-2">
+        <div className="text-xl">
+          ท่าปัจจุบัน:{" "}
+          <span id="exerciseName" className="font-bold">
+            -
+          </span>
+        </div>
+        <div className="text-xl">
+          จำนวนครั้ง:{" "}
+          <span id="repCounter" className="font-bold">
+            0
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
