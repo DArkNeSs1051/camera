@@ -12,7 +12,8 @@ export default function Home() {
 
   useEffect(() => {
     const init = async () => {
-      await tf.setBackend("cpu");
+      await tf.setBackend("webgl");
+      console.log("Backend initialized:", tf.getBackend());
       await tf.ready();
 
       const detector = await posedetection.createDetector(
