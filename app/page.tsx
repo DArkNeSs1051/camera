@@ -174,7 +174,7 @@ export default function Home() {
       const detector = await posedetection.createDetector(
         posedetection.SupportedModels.MoveNet,
         {
-          modelType: posedetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
+          modelType: posedetection.movenet.modelType.SINGLEPOSE_THUNDER,
         }
       );
       detectorRef.current = detector;
