@@ -17,7 +17,6 @@ export default function Home() {
 
   const count = useRef(0);
   const isDownPushUp = useRef(false);
-  const isDownSquat = useRef(false);
   const lastDetectedPose = useRef<string | null>(null);
   let lastCountTime = 0;
   const COUNT_DELAY = 800;
@@ -61,11 +60,10 @@ export default function Home() {
 
   // Add refs to track how long the pose is held
   const pushUpHoldFrames = useRef(0);
-  const squatHoldFrames = useRef(0);
 
   // Add refs to track previous positions for stability check
   const prevRightElbow = useRef<Point | null>(null);
-  const prevRightKnee = useRef<Point | null>(null);
+  const prevRightShoulder = useRef<Point | null>(null);
 
   // Helper to check if movement is stable (not jittery)
   const isStable = (prev: Point | null, curr: Point, threshold = 10) => {
@@ -73,6 +71,19 @@ export default function Home() {
     const dx = curr.x - prev.x;
     const dy = curr.y - prev.y;
     return Math.sqrt(dx * dx + dy * dy) < threshold;
+  };
+
+  // Helper to draw a line between two points
+  const drawLine = (p1: Point, p2: Point, color = "#00FFFF", width = 2) => {
+    const canvas = canvasRef.current!;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.stroke();
   };
 
   const detectExercise = (lm: any[]) => {
@@ -84,23 +95,56 @@ export default function Home() {
     const rightShoulder = lm[6];
     const rightElbow = lm[8];
     const rightWrist = lm[10];
-
     const rightHip = lm[12];
     const rightKnee = lm[14];
     const rightAnkle = lm[16];
 
-    // Push-up (use right side for mirrored front camera)
+    // Draw all relevant lines for push-up detection
     if (
-      isValidLandmarks(rightShoulder, rightElbow, rightWrist) &&
+      isValidLandmarks(
+        rightShoulder,
+        rightElbow,
+        rightWrist,
+        rightHip,
+        rightKnee,
+        rightAnkle
+      ) &&
       isConfident(rightShoulder) &&
       isConfident(rightElbow) &&
-      isConfident(rightWrist)
+      isConfident(rightWrist) &&
+      isConfident(rightHip) &&
+      isConfident(rightKnee) &&
+      isConfident(rightAnkle)
     ) {
+      // Draw arm (shoulder-elbow-wrist)
+      drawLine(rightShoulder, rightElbow, "#FFEB3B", 3); // yellow
+      drawLine(rightElbow, rightWrist, "#FFEB3B", 3);
+
+      // Draw body (shoulder-hip-knee-ankle)
+      drawLine(rightShoulder, rightHip, "#00E676", 3); // green
+      drawLine(rightHip, rightKnee, "#00E676", 3);
+      drawLine(rightKnee, rightAnkle, "#00E676", 3);
+
+      // Draw angle at elbow
       const angle = getAngle(rightShoulder, rightElbow, rightWrist);
       drawAngleLine(rightShoulder, rightElbow, rightWrist, angle);
 
-      // Only increment hold frames if elbow is stable
-      if (angle < 65 && isStable(prevRightElbow.current, rightElbow)) {
+      const bodyAngle = getAngle(rightShoulder, rightHip, rightKnee);
+      const shoulderElbowYDiff = rightElbow.y - rightShoulder.y;
+      const elbowWristYDiff = rightWrist.y - rightElbow.y;
+      const isShoulderLowered = shoulderElbowYDiff > 0.05;
+      const isWristBelowElbow = elbowWristYDiff > 0.05;
+      const isBodyStraight = bodyAngle > 160;
+
+      drawAngleLine(rightShoulder, rightElbow, rightWrist, angle);
+
+      // Check for push-up down position
+      if (
+        angle < 65 &&
+        isStable(prevRightElbow.current, rightElbow) &&
+        isShoulderLowered &&
+        isWristBelowElbow
+      ) {
         pushUpHoldFrames.current++;
         if (pushUpHoldFrames.current >= 3 && !isDownPushUp.current) {
           isDownPushUp.current = true;
@@ -109,52 +153,26 @@ export default function Home() {
         pushUpHoldFrames.current = 0;
       }
 
-      if (angle > 165 && isDownPushUp.current && canCountNow()) {
+      // Check for push-up up position
+      if (
+        angle > 165 &&
+        isDownPushUp.current &&
+        isBodyStraight &&
+        canCountNow() &&
+        Date.now() - lastCountTime > 500
+      ) {
         count.current++;
         isDownPushUp.current = false;
         lastCountTime = Date.now();
         lastDetectedPose.current = "Push-up";
       }
 
-      // Update previous elbow position
       prevRightElbow.current = { x: rightElbow.x, y: rightElbow.y };
+      prevRightShoulder.current = { x: rightShoulder.x, y: rightShoulder.y };
     } else {
       pushUpHoldFrames.current = 0;
       prevRightElbow.current = null;
-    }
-
-    // Squat (use right side for mirrored front camera)
-    if (
-      isValidLandmarks(rightHip, rightKnee, rightAnkle) &&
-      isConfident(rightHip) &&
-      isConfident(rightKnee) &&
-      isConfident(rightAnkle)
-    ) {
-      const angle = getAngle(rightHip, rightKnee, rightAnkle);
-      drawAngleLine(rightHip, rightKnee, rightAnkle, angle);
-
-      // Only increment hold frames if knee is stable
-      if (angle < 85 && isStable(prevRightKnee.current, rightKnee)) {
-        squatHoldFrames.current++;
-        if (squatHoldFrames.current >= 3 && !isDownSquat.current) {
-          isDownSquat.current = true;
-        }
-      } else {
-        squatHoldFrames.current = 0;
-      }
-
-      if (angle > 165 && isDownSquat.current && canCountNow()) {
-        count.current++;
-        isDownSquat.current = false;
-        lastCountTime = Date.now();
-        lastDetectedPose.current = "Squat";
-      }
-
-      // Update previous knee position
-      prevRightKnee.current = { x: rightKnee.x, y: rightKnee.y };
-    } else {
-      squatHoldFrames.current = 0;
-      prevRightKnee.current = null;
+      prevRightShoulder.current = null;
     }
 
     const nameEl = document.getElementById("exerciseName");
