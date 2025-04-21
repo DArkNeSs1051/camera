@@ -92,7 +92,6 @@ export default function Home() {
     // Helper to check keypoint confidence
     const isConfident = (kp: any) => kp && kp.score > 0.6;
 
-    // จุดสำหรับด้านขวา
     const rightShoulder = lm[6];
     const rightElbow = lm[8];
     const rightWrist = lm[10];
@@ -100,7 +99,6 @@ export default function Home() {
     const rightKnee = lm[14];
     const rightAnkle = lm[16];
 
-    // เพิ่มจุดสำหรับด้านซ้าย
     const leftShoulder = lm[5];
     const leftElbow = lm[7];
     const leftWrist = lm[9];
@@ -108,72 +106,50 @@ export default function Home() {
     const leftKnee = lm[13];
     const leftAnkle = lm[15];
 
-    // ตรวจสอบความถูกต้องของจุดทั้งสองด้าน
     if (
       isValidLandmarks(
         rightShoulder, rightElbow, rightWrist, rightHip, rightKnee, rightAnkle,
         leftShoulder, leftElbow, leftWrist, leftHip, leftKnee, leftAnkle
       ) &&
       isConfident(rightShoulder) && isConfident(rightElbow) && isConfident(rightWrist) &&
-      isConfident(rightHip) && isConfident(rightKnee) && isConfident(rightAnkle) &&
-      isConfident(leftShoulder) && isConfident(leftElbow) && isConfident(leftWrist) &&
-      isConfident(leftHip) && isConfident(leftKnee) && isConfident(leftAnkle)
+      isConfident(leftShoulder) && isConfident(leftElbow) && isConfident(leftWrist)
     ) {
-      // วาดเส้นแขนขวา
-      drawLine(rightShoulder, rightElbow, "#FFEB3B", 3);
-      drawLine(rightElbow, rightWrist, "#FFEB3B", 3);
-
-      // วาดเส้นร่างกายด้านขวา
-      drawLine(rightShoulder, rightHip, "#00E676", 3);
-      drawLine(rightHip, rightKnee, "#00E676", 3);
-      drawLine(rightKnee, rightAnkle, "#00E676", 3);
-
-      // วาดเส้นแขนซ้าย
-      drawLine(leftShoulder, leftElbow, "#FFEB3B", 3);
-      drawLine(leftElbow, leftWrist, "#FFEB3B", 3);
-
-      // วาดเส้นร่างกายด้านซ้าย
-      drawLine(leftShoulder, leftHip, "#00E676", 3);
-      drawLine(leftHip, leftKnee, "#00E676", 3);
-      drawLine(leftKnee, leftAnkle, "#00E676", 3);
-
-      // คำนวณมุมข้อศอกทั้งสองข้าง
+      // Calculate elbow angles
       const rightElbowAngle = getAngle(rightShoulder, rightElbow, rightWrist);
       const leftElbowAngle = getAngle(leftShoulder, leftElbow, leftWrist);
+      const avgElbowAngle = (rightElbowAngle + leftElbowAngle) / 2;
 
-      // คำนวณมุมลำตัวทั้งสองข้าง
+      // Calculate body angles
       const rightBodyAngle = getAngle(rightShoulder, rightHip, rightKnee);
       const leftBodyAngle = getAngle(leftShoulder, leftHip, leftKnee);
-
-      // แสดงมุมทั้งสองข้าง
-      drawAngleLine(rightShoulder, rightElbow, rightWrist, rightElbowAngle);
-      drawAngleLine(leftShoulder, leftElbow, leftWrist, leftElbowAngle);
-
-      // ตรวจสอบท่าทางโดยใช้ค่าเฉลี่ยของทั้งสองข้าง
-      const avgElbowAngle = (rightElbowAngle + leftElbowAngle) / 2;
       const avgBodyAngle = (rightBodyAngle + leftBodyAngle) / 2;
       const isBodyStraight = avgBodyAngle > 160;
 
-      // ตรวจสอบตำแหน่งไหล่และข้อมือทั้งสองข้าง
+      // Shoulder and wrist position checks
       const rightShoulderElbowYDiff = rightElbow.y - rightShoulder.y;
       const rightElbowWristYDiff = rightWrist.y - rightElbow.y;
       const leftShoulderElbowYDiff = leftElbow.y - leftShoulder.y;
       const leftElbowWristYDiff = leftWrist.y - leftElbow.y;
-
       const isShoulderLowered = (rightShoulderElbowYDiff > 0.05 && leftShoulderElbowYDiff > 0.05);
       const isWristBelowElbow = (rightElbowWristYDiff > 0.05 && leftElbowWristYDiff > 0.05);
 
-      // ตรวจสอบความมั่นคงของการเคลื่อนไหว
+      // Stability check
       const isStablePosition = 
         isStable(prevRightElbow.current, rightElbow) &&
         isStable(prevRightShoulder.current, rightShoulder);
 
-      // ตรวจสอบท่า push-up ลง
+      // Nose for elbow-above-nose check
+      const nose = lm[0];
+      const isLeftElbowAboveNose = nose.y > leftElbow.y;
+      const isRightElbowAboveNose = nose.y > rightElbow.y;
+
+      // Detect push-up down position
       if (
-        avgElbowAngle < 65 &&
+        avgElbowAngle > 70 && avgElbowAngle < 100 &&
         isStablePosition &&
         isShoulderLowered &&
-        isWristBelowElbow
+        isWristBelowElbow &&
+        (isLeftElbowAboveNose || isRightElbowAboveNose)
       ) {
         pushUpHoldFrames.current++;
         if (pushUpHoldFrames.current >= 3 && !isDownPushUp.current) {
@@ -183,13 +159,12 @@ export default function Home() {
         pushUpHoldFrames.current = 0;
       }
 
-      // ตรวจสอบท่า push-up ขึ้น
+      // Detect push-up up position
       if (
-        avgElbowAngle > 165 &&
+        avgElbowAngle > 170 &&
         isDownPushUp.current &&
         isBodyStraight &&
-        canCountNow() &&
-        Date.now() - lastCountTime > 500
+        canCountNow()
       ) {
         count.current++;
         isDownPushUp.current = false;
@@ -197,7 +172,7 @@ export default function Home() {
         lastDetectedPose.current = "Push-up";
       }
 
-      // บันทึกตำแหน่งปัจจุบันสำหรับการตรวจสอบความมั่นคง
+      // Save previous positions
       prevRightElbow.current = { x: rightElbow.x, y: rightElbow.y };
       prevRightShoulder.current = { x: rightShoulder.x, y: rightShoulder.y };
     } else {
