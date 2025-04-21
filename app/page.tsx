@@ -90,97 +90,105 @@ export default function Home() {
     if (!lm || lm.length < 17) return;
 
     // Helper to check keypoint confidence
-    const isConfident = (kp: any) => kp && kp.score > 0.6;
+    const isConfident = (kp: any) => kp && kp.score > 0.5;
+
+    // Keypoints
+    const nose = lm[0];
+    const leftShoulder = lm[5];
+    const leftElbow = lm[7];
+    const leftWrist = lm[9];
+    const leftHip = lm[11];
+    const leftKnee = lm[13];
 
     const rightShoulder = lm[6];
     const rightElbow = lm[8];
     const rightWrist = lm[10];
     const rightHip = lm[12];
     const rightKnee = lm[14];
-    const rightAnkle = lm[16];
 
-    const leftShoulder = lm[5];
-    const leftElbow = lm[7];
-    const leftWrist = lm[9];
-    const leftHip = lm[11];
-    const leftKnee = lm[13];
-    const leftAnkle = lm[15];
-
+    // ตรวจสอบว่ามี keypoint ที่ต้องใช้ครบและ confidence ดี
     if (
       isValidLandmarks(
-        rightShoulder, rightElbow, rightWrist, rightHip, rightKnee, rightAnkle,
-        leftShoulder, leftElbow, leftWrist, leftHip, leftKnee, leftAnkle
+        leftShoulder,
+        leftElbow,
+        leftWrist,
+        leftHip,
+        leftKnee,
+        rightShoulder,
+        rightElbow,
+        rightWrist,
+        rightHip,
+        rightKnee,
+        nose
       ) &&
-      isConfident(rightShoulder) && isConfident(rightElbow) && isConfident(rightWrist) &&
-      isConfident(leftShoulder) && isConfident(leftElbow) && isConfident(leftWrist)
+      isConfident(leftShoulder) &&
+      isConfident(leftElbow) &&
+      isConfident(leftWrist) &&
+      isConfident(leftHip) &&
+      isConfident(leftKnee) &&
+      isConfident(rightShoulder) &&
+      isConfident(rightElbow) &&
+      isConfident(rightWrist) &&
+      isConfident(rightHip) &&
+      isConfident(rightKnee) &&
+      isConfident(nose)
     ) {
-      // Calculate elbow angles
-      const rightElbowAngle = getAngle(rightShoulder, rightElbow, rightWrist);
+      // คำนวณมุมข้อศอกซ้าย/ขวา
       const leftElbowAngle = getAngle(leftShoulder, leftElbow, leftWrist);
-      const avgElbowAngle = (rightElbowAngle + leftElbowAngle) / 2;
+      const rightElbowAngle = getAngle(rightShoulder, rightElbow, rightWrist);
+      // คำนวณมุมหลังซ้าย/ขวา
+      const leftBackAngle = getAngle(leftShoulder, leftHip, leftKnee);
+      const rightBackAngle = getAngle(rightShoulder, rightHip, rightKnee);
 
-      // Calculate body angles
-      const rightBodyAngle = getAngle(rightShoulder, rightHip, rightKnee);
-      const leftBodyAngle = getAngle(leftShoulder, leftHip, leftKnee);
-      const avgBodyAngle = (rightBodyAngle + leftBodyAngle) / 2;
-      const isBodyStraight = avgBodyAngle > 160;
+      // ตรวจสอบหลังตรง
+      const highlightBack =
+        (Math.abs(leftBackAngle) > 20 && Math.abs(leftBackAngle) < 160) ||
+        (Math.abs(rightBackAngle) > 20 && Math.abs(rightBackAngle) < 160);
 
-      // Shoulder and wrist position checks
-      const rightShoulderElbowYDiff = rightElbow.y - rightShoulder.y;
-      const rightElbowWristYDiff = rightWrist.y - rightElbow.y;
-      const leftShoulderElbowYDiff = leftElbow.y - leftShoulder.y;
-      const leftElbowWristYDiff = leftWrist.y - leftElbow.y;
-      const isShoulderLowered = (rightShoulderElbowYDiff > 0.05 && leftShoulderElbowYDiff > 0.05);
-      const isWristBelowElbow = (rightElbowWristYDiff > 0.05 && leftElbowWristYDiff > 0.05);
+      // ตรวจสอบข้อศอกต่ำกว่าจมูก (ใช้ข้างใดข้างหนึ่งก็ได้)
+      const leftElbowAboveNose = nose.y > leftElbow.y;
+      const rightElbowAboveNose = nose.y > rightElbow.y;
 
-      // Stability check
-      const isStablePosition = 
-        isStable(prevRightElbow.current, rightElbow) &&
-        isStable(prevRightShoulder.current, rightShoulder);
+      // เงื่อนไขท่า down (ลง)
+      const isDown =
+        !highlightBack &&
+        (leftElbowAboveNose || rightElbowAboveNose) &&
+        ((Math.abs(leftElbowAngle) > 70 && Math.abs(leftElbowAngle) < 100) ||
+          (Math.abs(rightElbowAngle) > 70 && Math.abs(rightElbowAngle) < 100));
 
-      // Nose for elbow-above-nose check
-      const nose = lm[0];
-      const isLeftElbowAboveNose = nose.y > leftElbow.y;
-      const isRightElbowAboveNose = nose.y > rightElbow.y;
+      // เงื่อนไขท่า up (ขึ้น)
+      const isUp =
+        (Math.abs(leftElbowAngle) > 170 && Math.abs(leftElbowAngle) < 200) ||
+        (Math.abs(rightElbowAngle) > 170 && Math.abs(rightElbowAngle) < 200);
 
-      // Detect push-up down position
-      if (
-        avgElbowAngle > 70 && avgElbowAngle < 100 &&
-        isStablePosition &&
-        isShoulderLowered &&
-        isWristBelowElbow &&
-        (isLeftElbowAboveNose || isRightElbowAboveNose)
-      ) {
+      // State สำหรับการนับ
+      if (isDown) {
         pushUpHoldFrames.current++;
-        if (pushUpHoldFrames.current >= 3 && !isDownPushUp.current) {
+        if (pushUpHoldFrames.current >= 2 && !isDownPushUp.current) {
           isDownPushUp.current = true;
         }
       } else {
         pushUpHoldFrames.current = 0;
       }
 
-      // Detect push-up up position
-      if (
-        avgElbowAngle > 170 &&
-        isDownPushUp.current &&
-        isBodyStraight &&
-        canCountNow()
-      ) {
+      if (isUp && isDownPushUp.current && !highlightBack && canCountNow()) {
         count.current++;
         isDownPushUp.current = false;
         lastCountTime = Date.now();
         lastDetectedPose.current = "Push-up";
       }
 
-      // Save previous positions
-      prevRightElbow.current = { x: rightElbow.x, y: rightElbow.y };
-      prevRightShoulder.current = { x: rightShoulder.x, y: rightShoulder.y };
+      // วาดเส้นและมุม (optional)
+      drawAngleLine(leftShoulder, leftElbow, leftWrist, leftElbowAngle);
+      drawAngleLine(rightShoulder, rightElbow, rightWrist, rightElbowAngle);
+      drawAngleLine(leftShoulder, leftHip, leftKnee, leftBackAngle);
+      drawAngleLine(rightShoulder, rightHip, rightKnee, rightBackAngle);
     } else {
       pushUpHoldFrames.current = 0;
-      prevRightElbow.current = null;
-      prevRightShoulder.current = null;
+      isDownPushUp.current = false;
     }
 
+    // อัปเดต UI
     const nameEl = document.getElementById("exerciseName");
     const countEl = document.getElementById("repCounter");
     if (nameEl) nameEl.innerText = lastDetectedPose.current ?? "-";
