@@ -60,8 +60,10 @@ export default function Home() {
   // Add refs to track how long the pose is held
   const pushUpHoldFrames = useRef(0);
   const benchPressHoldFrames = useRef(0);
+  const squatHoldFrames = useRef(0);
   const isDownPushUp = useRef(false);
   const isDownBenchPress = useRef(false);
+  const isDownSquat = useRef(false);
 
   const detectPushUp = (
     leftShoulder: Point,
@@ -198,6 +200,59 @@ export default function Home() {
     drawAngleLine(rightShoulder, rightHip, rightKnee, rightBackAngle);
   };
 
+  const detectSquat = (
+    leftHip: Point,
+    leftKnee: Point,
+    leftAnkle: Point,
+    rightHip: Point,
+    rightKnee: Point,
+    rightAnkle: Point,
+    leftShoulder: Point,
+    rightShoulder: Point
+  ) => {
+    // คำนวณมุมเข่าซ้าย/ขวา
+    const leftKneeAngle = getAngle(leftHip, leftKnee, leftAnkle);
+    const rightKneeAngle = getAngle(rightHip, rightKnee, rightAnkle);
+
+    // คำนวณมุมลำตัว (หลัง) เพื่อช่วยตรวจสอบหลังตรง
+    const leftBodyAngle = getAngle(leftShoulder, leftHip, leftKnee);
+    const rightBodyAngle = getAngle(rightShoulder, rightHip, rightKnee);
+
+    // เงื่อนไข squat ลง (งอเข่า)
+    const isSquatDown =
+      leftKneeAngle > 60 &&
+      leftKneeAngle < 120 &&
+      rightKneeAngle > 60 &&
+      rightKneeAngle < 120 &&
+      leftBodyAngle > 40 &&
+      rightBodyAngle > 40;
+
+    // เงื่อนไข squat ขึ้น (เหยียดเข่า)
+    const isSquatUp = leftKneeAngle > 160 && rightKneeAngle > 160;
+
+    if (isSquatDown) {
+      squatHoldFrames.current++;
+      if (squatHoldFrames.current >= 2 && !isDownSquat.current) {
+        isDownSquat.current = true;
+      }
+    } else {
+      squatHoldFrames.current = 0;
+    }
+
+    if (isSquatUp && isDownSquat.current && canCountNow()) {
+      count.current++;
+      isDownSquat.current = false;
+      lastCountTime = Date.now();
+      lastDetectedPose.current = "Squat";
+    }
+
+    // วาดเส้นและมุม (optional)
+    drawAngleLine(leftHip, leftKnee, leftAnkle, leftKneeAngle);
+    drawAngleLine(rightHip, rightKnee, rightAnkle, rightKneeAngle);
+    drawAngleLine(leftShoulder, leftHip, leftKnee, leftBodyAngle);
+    drawAngleLine(rightShoulder, rightHip, rightKnee, rightBodyAngle);
+  };
+
   const detectExercise = (lm: any[]) => {
     if (!lm || lm.length < 17) return;
 
@@ -211,12 +266,14 @@ export default function Home() {
     const leftWrist = lm[9];
     const leftHip = lm[11];
     const leftKnee = lm[13];
+    const leftAnkle = lm[15];
 
     const rightShoulder = lm[6];
     const rightElbow = lm[8];
     const rightWrist = lm[10];
     const rightHip = lm[12];
     const rightKnee = lm[14];
+    const rightAnkle = lm[16];
 
     // ตรวจสอบว่ามี keypoint ที่ต้องใช้ครบและ confidence ดี
     if (
@@ -226,11 +283,13 @@ export default function Home() {
         leftWrist,
         leftHip,
         leftKnee,
+        leftAnkle,
         rightShoulder,
         rightElbow,
         rightWrist,
         rightHip,
         rightKnee,
+        rightAnkle,
         nose
       ) &&
       isConfident(leftShoulder) &&
@@ -238,11 +297,13 @@ export default function Home() {
       isConfident(leftWrist) &&
       isConfident(leftHip) &&
       isConfident(leftKnee) &&
+      isConfident(leftAnkle) &&
       isConfident(rightShoulder) &&
       isConfident(rightElbow) &&
       isConfident(rightWrist) &&
       isConfident(rightHip) &&
       isConfident(rightKnee) &&
+      isConfident(rightAnkle) &&
       isConfident(nose)
     ) {
       // ตรวจจับ push-up
@@ -271,6 +332,18 @@ export default function Home() {
         leftKnee,
         rightHip,
         rightKnee
+      );
+
+      // ตรวจจับ squat
+      detectSquat(
+        leftHip,
+        leftKnee,
+        leftAnkle,
+        rightHip,
+        rightKnee,
+        rightAnkle,
+        leftShoulder,
+        rightShoulder
       );
     } else {
       pushUpHoldFrames.current = 0;
