@@ -65,6 +65,11 @@ export default function Home() {
   const isDownBenchPress = useRef(false);
   const isDownSquat = useRef(false);
 
+  // นับแยกแต่ละท่า
+  const pushUpCount = useRef(0);
+  const benchPressCount = useRef(0);
+  const squatCount = useRef(0);
+
   const detectPushUp = (
     leftShoulder: Point,
     leftElbow: Point,
@@ -117,7 +122,7 @@ export default function Home() {
     }
 
     if (isUp && isDownPushUp.current && !highlightBack && canCountNow()) {
-      count.current++;
+      pushUpCount.current++;
       isDownPushUp.current = false;
       lastCountTime = Date.now();
       lastDetectedPose.current = "Push-up";
@@ -187,7 +192,7 @@ export default function Home() {
     }
 
     if (isBenchUp && isDownBenchPress.current && canCountNow()) {
-      count.current++;
+      benchPressCount.current++;
       isDownBenchPress.current = false;
       lastCountTime = Date.now();
       lastDetectedPose.current = "Dumbbell Bench Press";
@@ -240,7 +245,7 @@ export default function Home() {
     }
 
     if (isSquatUp && isDownSquat.current && canCountNow()) {
-      count.current++;
+      squatCount.current++;
       isDownSquat.current = false;
       lastCountTime = Date.now();
       lastDetectedPose.current = "Squat";
@@ -463,12 +468,18 @@ export default function Home() {
             -
           </span>
         </div>
-        <div className="text-xl">
-          จำนวนครั้ง:{" "}
-          <span id="repCounter" className="font-bold">
-            0
-          </span>
-        </div>
+        <div className="text-xl font-bold mb-2">สรุปจำนวนแต่ละท่า</div>
+        <ul className="space-y-1">
+          <li>
+            Push-up: <span id="pushupCounter">{pushUpCount.current}</span>
+          </li>
+          <li>
+            Dumbbell Bench Press: <span id="benchpressCounter">{benchPressCount.current}</span>
+          </li>
+          <li>
+            Squat: <span id="squatCounter">{squatCount.current}</span>
+          </li>
+        </ul>
       </div>
     </div>
   );
