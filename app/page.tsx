@@ -16,7 +16,6 @@ export default function Home() {
   const detectorRef = useRef<posedetection.PoseDetector | null>(null);
 
   const count = useRef(0);
-  const isDownPushUp = useRef(false);
   const lastDetectedPose = useRef<string | null>(null);
   let lastCountTime = 0;
   const COUNT_DELAY = 800;
@@ -60,30 +59,143 @@ export default function Home() {
 
   // Add refs to track how long the pose is held
   const pushUpHoldFrames = useRef(0);
+  const benchPressHoldFrames = useRef(0);
+  const isDownPushUp = useRef(false);
+  const isDownBenchPress = useRef(false);
 
-  // Add refs to track previous positions for stability check
-  const prevRightElbow = useRef<Point | null>(null);
-  const prevRightShoulder = useRef<Point | null>(null);
+  const detectPushUp = (
+    leftShoulder: Point,
+    leftElbow: Point,
+    leftWrist: Point,
+    rightShoulder: Point,
+    rightElbow: Point,
+    rightWrist: Point,
+    leftHip: Point,
+    leftKnee: Point,
+    rightHip: Point,
+    rightKnee: Point,
+    nose: Point
+  ) => {
+    // คำนวณมุมข้อศอกซ้าย/ขวา
+    const leftElbowAngle = getAngle(leftShoulder, leftElbow, leftWrist);
+    const rightElbowAngle = getAngle(rightShoulder, rightElbow, rightWrist);
+    // คำนวณมุมหลังซ้าย/ขวา
+    const leftBackAngle = getAngle(leftShoulder, leftHip, leftKnee);
+    const rightBackAngle = getAngle(rightShoulder, rightHip, rightKnee);
 
-  // Helper to check if movement is stable (not jittery)
-  const isStable = (prev: Point | null, curr: Point, threshold = 10) => {
-    if (!prev) return false;
-    const dx = curr.x - prev.x;
-    const dy = curr.y - prev.y;
-    return Math.sqrt(dx * dx + dy * dy) < threshold;
+    // ตรวจสอบหลังตรง
+    const highlightBack =
+      (Math.abs(leftBackAngle) > 20 && Math.abs(leftBackAngle) < 160) ||
+      (Math.abs(rightBackAngle) > 20 && Math.abs(rightBackAngle) < 160);
+
+    // ตรวจสอบข้อศอกต่ำกว่าจมูก (ใช้ข้างใดข้างหนึ่งก็ได้)
+    const leftElbowAboveNose = nose.y > leftElbow.y;
+    const rightElbowAboveNose = nose.y > rightElbow.y;
+
+    // เงื่อนไขท่า down (ลง)
+    const isDown =
+      !highlightBack &&
+      (leftElbowAboveNose || rightElbowAboveNose) &&
+      ((Math.abs(leftElbowAngle) > 70 && Math.abs(leftElbowAngle) < 100) ||
+        (Math.abs(rightElbowAngle) > 70 && Math.abs(rightElbowAngle) < 100));
+
+    // เงื่อนไขท่า up (ขึ้น)
+    const isUp =
+      (Math.abs(leftElbowAngle) > 170 && Math.abs(leftElbowAngle) < 200) ||
+      (Math.abs(rightElbowAngle) > 170 && Math.abs(rightElbowAngle) < 200);
+
+    // State สำหรับการนับ
+    if (isDown) {
+      pushUpHoldFrames.current++;
+      if (pushUpHoldFrames.current >= 2 && !isDownPushUp.current) {
+        isDownPushUp.current = true;
+      }
+    } else {
+      pushUpHoldFrames.current = 0;
+    }
+
+    if (isUp && isDownPushUp.current && !highlightBack && canCountNow()) {
+      count.current++;
+      isDownPushUp.current = false;
+      lastCountTime = Date.now();
+      lastDetectedPose.current = "Push-up";
+    }
+
+    // วาดเส้นและมุม (optional)
+    drawAngleLine(leftShoulder, leftElbow, leftWrist, leftElbowAngle);
+    drawAngleLine(rightShoulder, rightElbow, rightWrist, rightElbowAngle);
+    drawAngleLine(leftShoulder, leftHip, leftKnee, leftBackAngle);
+    drawAngleLine(rightShoulder, rightHip, rightKnee, rightBackAngle);
   };
 
-  // Helper to draw a line between two points
-  const drawLine = (p1: Point, p2: Point, color = "#00FFFF", width = 2) => {
-    const canvas = canvasRef.current!;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.strokeStyle = color;
-    ctx.lineWidth = width;
-    ctx.beginPath();
-    ctx.moveTo(p1.x, p1.y);
-    ctx.lineTo(p2.x, p2.y);
-    ctx.stroke();
+  const detectBenchPress = (
+    leftShoulder: Point,
+    leftElbow: Point,
+    leftWrist: Point,
+    rightShoulder: Point,
+    rightElbow: Point,
+    rightWrist: Point,
+    leftHip: Point,
+    leftKnee: Point,
+    rightHip: Point,
+    rightKnee: Point
+  ) => {
+    // คำนวณมุมข้อศอกซ้าย/ขวา
+    const leftElbowAngle = getAngle(leftShoulder, leftElbow, leftWrist);
+    const rightElbowAngle = getAngle(rightShoulder, rightElbow, rightWrist);
+    // คำนวณมุมหลังซ้าย/ขวา
+    const leftBackAngle = getAngle(leftShoulder, leftHip, leftKnee);
+    const rightBackAngle = getAngle(rightShoulder, rightHip, rightKnee);
+
+    // ตรวจสอบหลังตรง
+    const highlightBack =
+      (Math.abs(leftBackAngle) > 20 && Math.abs(leftBackAngle) < 160) ||
+      (Math.abs(rightBackAngle) > 20 && Math.abs(rightBackAngle) < 160);
+
+    // คำนวณมุมข้อศอกและตำแหน่ง
+    const isElbowBent =
+      (Math.abs(leftElbowAngle) > 60 && Math.abs(leftElbowAngle) < 110) ||
+      (Math.abs(rightElbowAngle) > 60 && Math.abs(rightElbowAngle) < 110);
+
+    const isElbowExtended =
+      (Math.abs(leftElbowAngle) > 160 && Math.abs(leftElbowAngle) < 200) ||
+      (Math.abs(rightElbowAngle) > 160 && Math.abs(rightElbowAngle) < 200);
+
+    // วางแขนแนวตั้งมากขึ้น ข้อมือควรต่ำกว่าไหล่ (ระหว่างยกดัมเบลลง)
+    const leftWristBelowShoulder = leftWrist.y > leftShoulder.y;
+    const rightWristBelowShoulder = rightWrist.y > rightShoulder.y;
+
+    // ท่ากำลังยกลง
+    const isBenchDown =
+      isElbowBent &&
+      (leftWristBelowShoulder || rightWristBelowShoulder) &&
+      !highlightBack;
+
+    // ท่าดันขึ้น
+    const isBenchUp = isElbowExtended && !highlightBack;
+
+    // State สำหรับ bench press
+    if (isBenchDown) {
+      benchPressHoldFrames.current++;
+      if (benchPressHoldFrames.current >= 2 && !isDownBenchPress.current) {
+        isDownBenchPress.current = true;
+      }
+    } else {
+      benchPressHoldFrames.current = 0;
+    }
+
+    if (isBenchUp && isDownBenchPress.current && canCountNow()) {
+      count.current++;
+      isDownBenchPress.current = false;
+      lastCountTime = Date.now();
+      lastDetectedPose.current = "Dumbbell Bench Press";
+    }
+
+    // วาดเส้นและมุม (optional)
+    drawAngleLine(leftShoulder, leftElbow, leftWrist, leftElbowAngle);
+    drawAngleLine(rightShoulder, rightElbow, rightWrist, rightElbowAngle);
+    drawAngleLine(leftShoulder, leftHip, leftKnee, leftBackAngle);
+    drawAngleLine(rightShoulder, rightHip, rightKnee, rightBackAngle);
   };
 
   const detectExercise = (lm: any[]) => {
@@ -133,59 +245,38 @@ export default function Home() {
       isConfident(rightKnee) &&
       isConfident(nose)
     ) {
-      // คำนวณมุมข้อศอกซ้าย/ขวา
-      const leftElbowAngle = getAngle(leftShoulder, leftElbow, leftWrist);
-      const rightElbowAngle = getAngle(rightShoulder, rightElbow, rightWrist);
-      // คำนวณมุมหลังซ้าย/ขวา
-      const leftBackAngle = getAngle(leftShoulder, leftHip, leftKnee);
-      const rightBackAngle = getAngle(rightShoulder, rightHip, rightKnee);
-
-      // ตรวจสอบหลังตรง
-      const highlightBack =
-        (Math.abs(leftBackAngle) > 20 && Math.abs(leftBackAngle) < 160) ||
-        (Math.abs(rightBackAngle) > 20 && Math.abs(rightBackAngle) < 160);
-
-      // ตรวจสอบข้อศอกต่ำกว่าจมูก (ใช้ข้างใดข้างหนึ่งก็ได้)
-      const leftElbowAboveNose = nose.y > leftElbow.y;
-      const rightElbowAboveNose = nose.y > rightElbow.y;
-
-      // เงื่อนไขท่า down (ลง)
-      const isDown =
-        !highlightBack &&
-        (leftElbowAboveNose || rightElbowAboveNose) &&
-        ((Math.abs(leftElbowAngle) > 70 && Math.abs(leftElbowAngle) < 100) ||
-          (Math.abs(rightElbowAngle) > 70 && Math.abs(rightElbowAngle) < 100));
-
-      // เงื่อนไขท่า up (ขึ้น)
-      const isUp =
-        (Math.abs(leftElbowAngle) > 170 && Math.abs(leftElbowAngle) < 200) ||
-        (Math.abs(rightElbowAngle) > 170 && Math.abs(rightElbowAngle) < 200);
-
-      // State สำหรับการนับ
-      if (isDown) {
-        pushUpHoldFrames.current++;
-        if (pushUpHoldFrames.current >= 2 && !isDownPushUp.current) {
-          isDownPushUp.current = true;
-        }
-      } else {
-        pushUpHoldFrames.current = 0;
-      }
-
-      if (isUp && isDownPushUp.current && !highlightBack && canCountNow()) {
-        count.current++;
-        isDownPushUp.current = false;
-        lastCountTime = Date.now();
-        lastDetectedPose.current = "Push-up";
-      }
-
-      // วาดเส้นและมุม (optional)
-      drawAngleLine(leftShoulder, leftElbow, leftWrist, leftElbowAngle);
-      drawAngleLine(rightShoulder, rightElbow, rightWrist, rightElbowAngle);
-      drawAngleLine(leftShoulder, leftHip, leftKnee, leftBackAngle);
-      drawAngleLine(rightShoulder, rightHip, rightKnee, rightBackAngle);
+      // ตรวจจับ push-up
+      detectPushUp(
+        leftShoulder,
+        leftElbow,
+        leftWrist,
+        rightShoulder,
+        rightElbow,
+        rightWrist,
+        leftHip,
+        leftKnee,
+        rightHip,
+        rightKnee,
+        nose
+      );
+      // ตรวจจับ dumbbell bench press
+      detectBenchPress(
+        leftShoulder,
+        leftElbow,
+        leftWrist,
+        rightShoulder,
+        rightElbow,
+        rightWrist,
+        leftHip,
+        leftKnee,
+        rightHip,
+        rightKnee
+      );
     } else {
       pushUpHoldFrames.current = 0;
       isDownPushUp.current = false;
+      benchPressHoldFrames.current = 0;
+      isDownBenchPress.current = false;
     }
 
     // อัปเดต UI
