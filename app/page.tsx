@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import * as tf from "@tensorflow/tfjs";
 import * as posedetection from "@tensorflow-models/pose-detection";
 import "@tensorflow/tfjs-backend-webgl";
@@ -15,12 +15,29 @@ export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const detectorRef = useRef<posedetection.PoseDetector | null>(null);
 
-  const count = useRef(0);
-  const lastDetectedPose = useRef<string | null>(null);
-  let lastCountTime = 0;
+  // state สำหรับ UI
+  const [pushUpCount, setPushUpCount] = useState(0);
+  const [benchPressCount, setBenchPressCount] = useState(0);
+  const [squatCount, setSquatCount] = useState(0);
+  const [currentPose, setCurrentPose] = useState<string | null>(null);
+
+  // สำหรับ logic
+  const pushUpHoldFrames = useRef(0);
+  const benchPressHoldFrames = useRef(0);
+  const squatHoldFrames = useRef(0);
+  const isDownPushUp = useRef(false);
+  const isDownBenchPress = useRef(false);
+  const isDownSquat = useRef(false);
+
+  // เวลาสำหรับแต่ละท่า
+  const lastPushUpTime = useRef(0);
+  const lastBenchPressTime = useRef(0);
+  const lastSquatTime = useRef(0);
   const COUNT_DELAY = 800;
 
-  const canCountNow = () => Date.now() - lastCountTime > COUNT_DELAY;
+  const canCountPushUp = () => Date.now() - lastPushUpTime.current > COUNT_DELAY;
+  const canCountBenchPress = () => Date.now() - lastBenchPressTime.current > COUNT_DELAY;
+  const canCountSquat = () => Date.now() - lastSquatTime.current > COUNT_DELAY;
 
   const isValidLandmarks = (...points: (Point | undefined)[]) =>
     points.every(
@@ -57,19 +74,7 @@ export default function Home() {
     ctx.fillText(`${Math.round(angle)}°`, p2.x + 10, p2.y + 10);
   };
 
-  // Add refs to track how long the pose is held
-  const pushUpHoldFrames = useRef(0);
-  const benchPressHoldFrames = useRef(0);
-  const squatHoldFrames = useRef(0);
-  const isDownPushUp = useRef(false);
-  const isDownBenchPress = useRef(false);
-  const isDownSquat = useRef(false);
-
-  // นับแยกแต่ละท่า
-  const pushUpCount = useRef(0);
-  const benchPressCount = useRef(0);
-  const squatCount = useRef(0);
-
+  // --- Detect Push-up ---
   const detectPushUp = (
     leftShoulder: Point,
     leftElbow: Point,
@@ -83,35 +88,28 @@ export default function Home() {
     rightKnee: Point,
     nose: Point
   ) => {
-    // คำนวณมุมข้อศอกซ้าย/ขวา
     const leftElbowAngle = getAngle(leftShoulder, leftElbow, leftWrist);
     const rightElbowAngle = getAngle(rightShoulder, rightElbow, rightWrist);
-    // คำนวณมุมหลังซ้าย/ขวา
     const leftBackAngle = getAngle(leftShoulder, leftHip, leftKnee);
     const rightBackAngle = getAngle(rightShoulder, rightHip, rightKnee);
 
-    // ตรวจสอบหลังตรง
     const highlightBack =
       (Math.abs(leftBackAngle) > 20 && Math.abs(leftBackAngle) < 160) ||
       (Math.abs(rightBackAngle) > 20 && Math.abs(rightBackAngle) < 160);
 
-    // ตรวจสอบข้อศอกต่ำกว่าจมูก (ใช้ข้างใดข้างหนึ่งก็ได้)
     const leftElbowAboveNose = nose.y > leftElbow.y;
     const rightElbowAboveNose = nose.y > rightElbow.y;
 
-    // เงื่อนไขท่า down (ลง)
     const isDown =
       !highlightBack &&
       (leftElbowAboveNose || rightElbowAboveNose) &&
       ((Math.abs(leftElbowAngle) > 70 && Math.abs(leftElbowAngle) < 100) ||
         (Math.abs(rightElbowAngle) > 70 && Math.abs(rightElbowAngle) < 100));
 
-    // เงื่อนไขท่า up (ขึ้น)
     const isUp =
       (Math.abs(leftElbowAngle) > 170 && Math.abs(leftElbowAngle) < 200) ||
       (Math.abs(rightElbowAngle) > 170 && Math.abs(rightElbowAngle) < 200);
 
-    // State สำหรับการนับ
     if (isDown) {
       pushUpHoldFrames.current++;
       if (pushUpHoldFrames.current >= 2 && !isDownPushUp.current) {
@@ -121,20 +119,20 @@ export default function Home() {
       pushUpHoldFrames.current = 0;
     }
 
-    if (isUp && isDownPushUp.current && !highlightBack && canCountNow()) {
-      pushUpCount.current++;
+    if (isUp && isDownPushUp.current && !highlightBack && canCountPushUp()) {
+      setPushUpCount((prev) => prev + 1);
       isDownPushUp.current = false;
-      lastCountTime = Date.now();
-      lastDetectedPose.current = "Push-up";
+      lastPushUpTime.current = Date.now();
+      setCurrentPose("Push-up");
     }
 
-    // วาดเส้นและมุม (optional)
     drawAngleLine(leftShoulder, leftElbow, leftWrist, leftElbowAngle);
     drawAngleLine(rightShoulder, rightElbow, rightWrist, rightElbowAngle);
     drawAngleLine(leftShoulder, leftHip, leftKnee, leftBackAngle);
     drawAngleLine(rightShoulder, rightHip, rightKnee, rightBackAngle);
   };
 
+  // --- Detect Bench Press ---
   const detectBenchPress = (
     leftShoulder: Point,
     leftElbow: Point,
@@ -147,19 +145,15 @@ export default function Home() {
     rightHip: Point,
     rightKnee: Point
   ) => {
-    // คำนวณมุมข้อศอกซ้าย/ขวา
     const leftElbowAngle = getAngle(leftShoulder, leftElbow, leftWrist);
     const rightElbowAngle = getAngle(rightShoulder, rightElbow, rightWrist);
-    // คำนวณมุมหลังซ้าย/ขวา
     const leftBackAngle = getAngle(leftShoulder, leftHip, leftKnee);
     const rightBackAngle = getAngle(rightShoulder, rightHip, rightKnee);
 
-    // ตรวจสอบหลังตรง
     const highlightBack =
       (Math.abs(leftBackAngle) > 20 && Math.abs(leftBackAngle) < 160) ||
       (Math.abs(rightBackAngle) > 20 && Math.abs(rightBackAngle) < 160);
 
-    // คำนวณมุมข้อศอกและตำแหน่ง
     const isElbowBent =
       (Math.abs(leftElbowAngle) > 60 && Math.abs(leftElbowAngle) < 110) ||
       (Math.abs(rightElbowAngle) > 60 && Math.abs(rightElbowAngle) < 110);
@@ -168,20 +162,16 @@ export default function Home() {
       (Math.abs(leftElbowAngle) > 160 && Math.abs(leftElbowAngle) < 200) ||
       (Math.abs(rightElbowAngle) > 160 && Math.abs(rightElbowAngle) < 200);
 
-    // วางแขนแนวตั้งมากขึ้น ข้อมือควรต่ำกว่าไหล่ (ระหว่างยกดัมเบลลง)
     const leftWristBelowShoulder = leftWrist.y > leftShoulder.y;
     const rightWristBelowShoulder = rightWrist.y > rightShoulder.y;
 
-    // ท่ากำลังยกลง
     const isBenchDown =
       isElbowBent &&
       (leftWristBelowShoulder || rightWristBelowShoulder) &&
       !highlightBack;
 
-    // ท่าดันขึ้น
     const isBenchUp = isElbowExtended && !highlightBack;
 
-    // State สำหรับ bench press
     if (isBenchDown) {
       benchPressHoldFrames.current++;
       if (benchPressHoldFrames.current >= 2 && !isDownBenchPress.current) {
@@ -191,20 +181,20 @@ export default function Home() {
       benchPressHoldFrames.current = 0;
     }
 
-    if (isBenchUp && isDownBenchPress.current && canCountNow()) {
-      benchPressCount.current++;
+    if (isBenchUp && isDownBenchPress.current && canCountBenchPress()) {
+      setBenchPressCount((prev) => prev + 1);
       isDownBenchPress.current = false;
-      lastCountTime = Date.now();
-      lastDetectedPose.current = "Dumbbell Bench Press";
+      lastBenchPressTime.current = Date.now();
+      setCurrentPose("Dumbbell Bench Press");
     }
 
-    // วาดเส้นและมุม (optional)
     drawAngleLine(leftShoulder, leftElbow, leftWrist, leftElbowAngle);
     drawAngleLine(rightShoulder, rightElbow, rightWrist, rightElbowAngle);
     drawAngleLine(leftShoulder, leftHip, leftKnee, leftBackAngle);
     drawAngleLine(rightShoulder, rightHip, rightKnee, rightBackAngle);
   };
 
+  // --- Detect Squat ---
   const detectSquat = (
     leftHip: Point,
     leftKnee: Point,
@@ -215,15 +205,11 @@ export default function Home() {
     leftShoulder: Point,
     rightShoulder: Point
   ) => {
-    // คำนวณมุมเข่าซ้าย/ขวา
     const leftKneeAngle = getAngle(leftHip, leftKnee, leftAnkle);
     const rightKneeAngle = getAngle(rightHip, rightKnee, rightAnkle);
-
-    // คำนวณมุมลำตัว (หลัง) เพื่อช่วยตรวจสอบหลังตรง
     const leftBodyAngle = getAngle(leftShoulder, leftHip, leftKnee);
     const rightBodyAngle = getAngle(rightShoulder, rightHip, rightKnee);
 
-    // เงื่อนไข squat ลง (งอเข่า)
     const isSquatDown =
       leftKneeAngle > 60 &&
       leftKneeAngle < 120 &&
@@ -232,7 +218,6 @@ export default function Home() {
       leftBodyAngle > 40 &&
       rightBodyAngle > 40;
 
-    // เงื่อนไข squat ขึ้น (เหยียดเข่า)
     const isSquatUp = leftKneeAngle > 160 && rightKneeAngle > 160;
 
     if (isSquatDown) {
@@ -244,14 +229,13 @@ export default function Home() {
       squatHoldFrames.current = 0;
     }
 
-    if (isSquatUp && isDownSquat.current && canCountNow()) {
-      squatCount.current++;
+    if (isSquatUp && isDownSquat.current && canCountSquat()) {
+      setSquatCount((prev) => prev + 1);
       isDownSquat.current = false;
-      lastCountTime = Date.now();
-      lastDetectedPose.current = "Squat";
+      lastSquatTime.current = Date.now();
+      setCurrentPose("Squat");
     }
 
-    // วาดเส้นและมุม (optional)
     drawAngleLine(leftHip, leftKnee, leftAnkle, leftKneeAngle);
     drawAngleLine(rightHip, rightKnee, rightAnkle, rightKneeAngle);
     drawAngleLine(leftShoulder, leftHip, leftKnee, leftBodyAngle);
@@ -261,10 +245,8 @@ export default function Home() {
   const detectExercise = (lm: any[]) => {
     if (!lm || lm.length < 17) return;
 
-    // Helper to check keypoint confidence
     const isConfident = (kp: any) => kp && kp.score > 0.5;
 
-    // Keypoints
     const nose = lm[0];
     const leftShoulder = lm[5];
     const leftElbow = lm[7];
@@ -280,7 +262,6 @@ export default function Home() {
     const rightKnee = lm[14];
     const rightAnkle = lm[16];
 
-    // ตรวจสอบว่ามี keypoint ที่ต้องใช้ครบและ confidence ดี
     if (
       isValidLandmarks(
         leftShoulder,
@@ -311,7 +292,6 @@ export default function Home() {
       isConfident(rightAnkle) &&
       isConfident(nose)
     ) {
-      // ตรวจจับ push-up
       detectPushUp(
         leftShoulder,
         leftElbow,
@@ -325,7 +305,6 @@ export default function Home() {
         rightKnee,
         nose
       );
-      // ตรวจจับ dumbbell bench press
       detectBenchPress(
         leftShoulder,
         leftElbow,
@@ -338,8 +317,6 @@ export default function Home() {
         rightHip,
         rightKnee
       );
-
-      // ตรวจจับ squat
       detectSquat(
         leftHip,
         leftKnee,
@@ -355,13 +332,9 @@ export default function Home() {
       isDownPushUp.current = false;
       benchPressHoldFrames.current = 0;
       isDownBenchPress.current = false;
+      squatHoldFrames.current = 0;
+      isDownSquat.current = false;
     }
-
-    // อัปเดต UI
-    const nameEl = document.getElementById("exerciseName");
-    const countEl = document.getElementById("repCounter");
-    if (nameEl) nameEl.innerText = lastDetectedPose.current ?? "-";
-    if (countEl) countEl.innerText = `${count.current}`;
   };
 
   useEffect(() => {
@@ -464,20 +437,20 @@ export default function Home() {
       <div className="absolute top-5 left-5 z-20 bg-black/50 text-white rounded p-4 space-y-2">
         <div className="text-xl">
           ท่าปัจจุบัน:{" "}
-          <span id="exerciseName" className="font-bold">
-            -
+          <span className="font-bold">
+            {currentPose ?? "-"}
           </span>
         </div>
         <div className="text-xl font-bold mb-2">สรุปจำนวนแต่ละท่า</div>
         <ul className="space-y-1">
           <li>
-            Push-up: <span id="pushupCounter">{pushUpCount.current}</span>
+            Push-up: <span>{pushUpCount}</span>
           </li>
           <li>
-            Dumbbell Bench Press: <span id="benchpressCounter">{benchPressCount.current}</span>
+            Dumbbell Bench Press: <span>{benchPressCount}</span>
           </li>
           <li>
-            Squat: <span id="squatCounter">{squatCount.current}</span>
+            Squat: <span>{squatCount}</span>
           </li>
         </ul>
       </div>
