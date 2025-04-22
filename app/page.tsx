@@ -98,8 +98,8 @@ export default function Home() {
     const isDown =
       !highlightBack &&
       (leftElbowAboveNose || rightElbowAboveNose) &&
-      ((Math.abs(leftElbowAngle) > 70 && Math.abs(leftElbowAngle) < 100) ||
-        (Math.abs(rightElbowAngle) > 70 && Math.abs(rightElbowAngle) < 100));
+      ((Math.abs(leftElbowAngle) > 65 && Math.abs(leftElbowAngle) < 100) ||
+        (Math.abs(rightElbowAngle) > 65 && Math.abs(rightElbowAngle) < 100));
 
     // เงื่อนไขท่า up (ขึ้น)
     const isUp =
