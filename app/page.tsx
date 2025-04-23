@@ -257,7 +257,7 @@ export default function Home() {
     if (!lm || lm.length < 17) return;
 
     // Helper to check keypoint confidence
-    const isConfident = (kp: any) => kp && kp.score > 0.5;
+    const isConfident = (kp: any) => kp && kp.score > 0.3;
 
     // Keypoints
     const nose = lm[0];
@@ -408,7 +408,7 @@ export default function Home() {
 
         poses.forEach((pose) => {
           pose.keypoints.forEach((keypoint) => {
-            if (keypoint.score && keypoint.score > 0.4) {
+            if (keypoint.score && keypoint.score > 0.3) {
               ctx.beginPath();
               ctx.arc(keypoint.x, keypoint.y, 6, 0, 2 * Math.PI);
               ctx.fillStyle = "#00FF00";
