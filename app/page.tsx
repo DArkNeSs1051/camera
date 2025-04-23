@@ -59,11 +59,17 @@ export default function Home() {
 
   // Add refs to track how long the pose is held
   const pushUpHoldFrames = useRef(0);
-  const benchPressHoldFrames = useRef(0);
-  const squatHoldFrames = useRef(0);
   const isDownPushUp = useRef(false);
+  const benchPressHoldFrames = useRef(0);
   const isDownBenchPress = useRef(false);
+  const squatHoldFrames = useRef(0);
   const isDownSquat = useRef(false);
+  const lungeHoldFrames = useRef(0);
+  const isDownLunge = useRef(false);
+  const plankHoldFrames = useRef(0);
+  const isDownPlank = useRef(false);
+  const sidePlankHoldFrames = useRef(0);
+  const isDownSidePlank = useRef(false);
 
   const detectPushUp = (
     leftShoulder: Point,
@@ -167,17 +173,14 @@ export default function Home() {
     const leftWristBelowShoulder = leftWrist.y > leftShoulder.y;
     const rightWristBelowShoulder = rightWrist.y > rightShoulder.y;
 
-    // ท่ากำลังยกลง
-    const isBenchDown =
+    const isDown =
       isElbowBent &&
       (leftWristBelowShoulder || rightWristBelowShoulder) &&
       !highlightBack;
 
-    // ท่าดันขึ้น
-    const isBenchUp = isElbowExtended && !highlightBack;
+    const isUp = isElbowExtended && !highlightBack;
 
-    // State สำหรับ bench press
-    if (isBenchDown) {
+    if (isDown) {
       benchPressHoldFrames.current++;
       if (benchPressHoldFrames.current >= 5 && !isDownBenchPress.current) {
         isDownBenchPress.current = true;
@@ -186,11 +189,11 @@ export default function Home() {
       benchPressHoldFrames.current = 0;
     }
 
-    if (isBenchUp && isDownBenchPress.current && canCountNow()) {
+    if (isUp && isDownBenchPress.current && canCountNow()) {
       count.current++;
       isDownBenchPress.current = false;
       lastCountTime = Date.now();
-      lastDetectedPose.current = "Dumbbell Bench Press";
+      lastDetectedPose.current = "Bench Press";
     }
 
     // วาดเส้นและมุม (optional)
@@ -251,6 +254,153 @@ export default function Home() {
     drawAngleLine(rightHip, rightKnee, rightAnkle, rightKneeAngle);
     drawAngleLine(leftShoulder, leftHip, leftKnee, leftBodyAngle);
     drawAngleLine(rightShoulder, rightHip, rightKnee, rightBodyAngle);
+  };
+
+  const detectLunge = (
+    leftHip: Point,
+    leftKnee: Point,
+    leftAnkle: Point,
+    rightHip: Point,
+    rightKnee: Point,
+    rightAnkle: Point,
+    leftShoulder: Point,
+    rightShoulder: Point
+  ) => {
+    // กำหนดให้ขาซ้ายเป็นขาหน้า (สามารถสลับ logic สำหรับขาขวาได้)
+    const leftKneeAngle = getAngle(leftHip, leftKnee, leftAnkle);
+    const rightKneeAngle = getAngle(rightHip, rightKnee, rightAnkle);
+    const leftBodyAngle = getAngle(leftShoulder, leftHip, leftKnee);
+    const rightBodyAngle = getAngle(rightShoulder, rightHip, rightKnee);
+
+    // เงื่อนไข lunge ลง (ขาหน้าตั้งฉาก ขาหลังงอ)
+    const isLungeDown =
+      leftKneeAngle > 70 &&
+      leftKneeAngle < 120 && // ขาหน้าตั้งฉาก
+      rightKneeAngle > 80 &&
+      rightKneeAngle < 150 && // ขาหลังงอ
+      leftBodyAngle > 30 &&
+      rightBodyAngle > 30;
+
+    // เงื่อนไข lunge ขึ้น (ขาทั้งสองเหยียด)
+    const isLungeUp = leftKneeAngle > 160 && rightKneeAngle > 160;
+
+    if (isLungeDown) {
+      lungeHoldFrames.current++;
+      if (lungeHoldFrames.current >= 5 && !isDownLunge.current) {
+        isDownLunge.current = true;
+      }
+    } else {
+      lungeHoldFrames.current = 0;
+    }
+
+    if (isLungeUp && isDownLunge.current && canCountNow()) {
+      count.current++;
+      isDownLunge.current = false;
+      lastCountTime = Date.now();
+      lastDetectedPose.current = "Leg Lunge";
+    }
+
+    // วาดเส้นและมุม (optional)
+    drawAngleLine(leftHip, leftKnee, leftAnkle, leftKneeAngle);
+    drawAngleLine(rightHip, rightKnee, rightAnkle, rightKneeAngle);
+    drawAngleLine(leftShoulder, leftHip, leftKnee, leftBodyAngle);
+    drawAngleLine(rightShoulder, rightHip, rightKnee, rightBodyAngle);
+  };
+
+  const detectPlank = (
+    leftShoulder: Point,
+    rightShoulder: Point,
+    leftHip: Point,
+    rightHip: Point,
+    leftAnkle: Point,
+    rightAnkle: Point
+  ) => {
+    // มุมไหล่-สะโพก-ข้อเท้า (ลำตัวควรตรง)
+    const leftBodyAngle = getAngle(leftShoulder, leftHip, leftAnkle);
+    const rightBodyAngle = getAngle(rightShoulder, rightHip, rightAnkle);
+
+    // เงื่อนไข plank: ลำตัวตรง (มุมประมาณ 160-200 องศา)
+    const isPlank =
+      leftBodyAngle > 160 &&
+      leftBodyAngle < 200 &&
+      rightBodyAngle > 160 &&
+      rightBodyAngle < 200;
+
+    if (isPlank) {
+      plankHoldFrames.current++;
+      if (plankHoldFrames.current >= 10 && !isDownPlank.current) {
+        isDownPlank.current = true;
+        count.current++;
+        lastCountTime = Date.now();
+        lastDetectedPose.current = "Plank";
+      }
+    } else {
+      plankHoldFrames.current = 0;
+      isDownPlank.current = false;
+    }
+
+    // วาดเส้นและมุม (optional)
+    drawAngleLine(leftShoulder, leftHip, leftAnkle, leftBodyAngle);
+    drawAngleLine(rightShoulder, rightHip, rightAnkle, rightBodyAngle);
+  };
+
+  const detectSidePlank = (
+    leftShoulder: Point,
+    rightShoulder: Point,
+    leftHip: Point,
+    rightHip: Point,
+    leftAnkle: Point,
+    rightAnkle: Point
+  ) => {
+    // ตรวจสอบด้านซ้าย (Left Side Plank)
+    const leftShoulderHipAnkleAngle = getAngle(
+      leftShoulder,
+      leftHip,
+      leftAnkle
+    );
+    // ตรวจสอบด้านขวา (Right Side Plank)
+    const rightShoulderHipAnkleAngle = getAngle(
+      rightShoulder,
+      rightHip,
+      rightAnkle
+    );
+
+    // เงื่อนไข side plank: ลำตัวตรง (มุมประมาณ 160-200 องศา) และไหล่-สะโพก-ข้อเท้าอยู่ในแนวเดียวกัน
+    const isLeftSidePlank =
+      leftShoulderHipAnkleAngle > 160 &&
+      leftShoulderHipAnkleAngle < 200 &&
+      Math.abs(leftShoulder.x - leftHip.x) < 60 && // ไหล่กับสะโพกอยู่ในแนวตั้ง
+      Math.abs(leftHip.x - leftAnkle.x) < 60; // สะโพกกับข้อเท้าอยู่ในแนวตั้ง
+
+    const isRightSidePlank =
+      rightShoulderHipAnkleAngle > 160 &&
+      rightShoulderHipAnkleAngle < 200 &&
+      Math.abs(rightShoulder.x - rightHip.x) < 60 &&
+      Math.abs(rightHip.x - rightAnkle.x) < 60;
+
+    if (isLeftSidePlank || isRightSidePlank) {
+      sidePlankHoldFrames.current++;
+      if (sidePlankHoldFrames.current >= 10 && !isDownSidePlank.current) {
+        isDownSidePlank.current = true;
+        count.current++;
+        lastCountTime = Date.now();
+        lastDetectedPose.current = isLeftSidePlank
+          ? "Side Plank (Left)"
+          : "Side Plank (Right)";
+      }
+    } else {
+      sidePlankHoldFrames.current = 0;
+      isDownSidePlank.current = false;
+    }
+
+    // วาดเส้นและมุม (optional)
+    drawAngleLine(leftShoulder, leftHip, leftAnkle, leftShoulderHipAnkleAngle);
+    drawAngleLine(
+      rightShoulder,
+      rightHip,
+      rightAnkle,
+      rightShoulderHipAnkleAngle
+    );
   };
 
   const detectExercise = (lm: any[]) => {
@@ -345,11 +495,51 @@ export default function Home() {
         leftShoulder,
         rightShoulder
       );
+
+      // ตรวจจับ Leg Lunge
+      detectLunge(
+        leftHip,
+        leftKnee,
+        leftAnkle,
+        rightHip,
+        rightKnee,
+        rightAnkle,
+        leftShoulder,
+        rightShoulder
+      );
+
+      // ตรวจจับ Plank
+      detectPlank(
+        leftShoulder,
+        rightShoulder,
+        leftHip,
+        rightHip,
+        leftAnkle,
+        rightAnkle
+      );
+
+      // ตรวจจับ Side Plank
+      detectSidePlank(
+        leftShoulder,
+        rightShoulder,
+        leftHip,
+        rightHip,
+        leftAnkle,
+        rightAnkle
+      );
     } else {
       pushUpHoldFrames.current = 0;
       isDownPushUp.current = false;
       benchPressHoldFrames.current = 0;
       isDownBenchPress.current = false;
+      squatHoldFrames.current = 0;
+      isDownSquat.current = false;
+      lungeHoldFrames.current = 0;
+      isDownLunge.current = false;
+      plankHoldFrames.current = 0;
+      isDownPlank.current = false;
+      sidePlankHoldFrames.current = 0;
+      isDownSidePlank.current = false;
     }
 
     // อัปเดต UI
