@@ -91,8 +91,8 @@ export default function Home() {
       (Math.abs(rightBackAngle) > 20 && Math.abs(rightBackAngle) < 160);
 
     // ตรวจสอบข้อศอกต่ำกว่าจมูก (ใช้ข้างใดข้างหนึ่งก็ได้)
-    const leftElbowAboveNose = leftElbow.y > nose.y;
-    const rightElbowAboveNose = rightElbow.y > nose.y;
+    const leftElbowAboveNose = nose.y > leftElbow.y;
+    const rightElbowAboveNose = nose.y > rightElbow.y;
 
     // เงื่อนไขท่า down (ลง)
     const isDown =
