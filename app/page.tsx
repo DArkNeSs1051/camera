@@ -109,7 +109,7 @@ export default function Home() {
     // State สำหรับการนับ
     if (isDown) {
       pushUpHoldFrames.current++;
-      if (pushUpHoldFrames.current >= 2 && !isDownPushUp.current) {
+      if (pushUpHoldFrames.current >= 5 && !isDownPushUp.current) {
         isDownPushUp.current = true;
       }
     } else {
@@ -179,7 +179,7 @@ export default function Home() {
     // State สำหรับ bench press
     if (isBenchDown) {
       benchPressHoldFrames.current++;
-      if (benchPressHoldFrames.current >= 2 && !isDownBenchPress.current) {
+      if (benchPressHoldFrames.current >= 5 && !isDownBenchPress.current) {
         isDownBenchPress.current = true;
       }
     } else {
@@ -232,7 +232,7 @@ export default function Home() {
 
     if (isSquatDown) {
       squatHoldFrames.current++;
-      if (squatHoldFrames.current >= 2 && !isDownSquat.current) {
+      if (squatHoldFrames.current >= 5 && !isDownSquat.current) {
         isDownSquat.current = true;
       }
     } else {
