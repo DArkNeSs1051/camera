@@ -644,17 +644,17 @@ export default function Home() {
         />
       </div>
       {/* แสดงสถานะท่าที่กำลังตรวจจับ */}
-      <div className="absolute top-4 left-4 z-20 bg-[A4C3D2]/100 px-4 py-2 rounded shadow font-bold text-black">
+      <div className="absolute top-4 left-4 z-20 bg-[#A4C3D2] px-4 py-2 rounded shadow font-bold text-black">
         {selectedPose === "auto"
           ? "กำลังตรวจจับ: อัตโนมัติ (ทุกท่า)"
           : `กำลังตรวจจับ: ${selectedPose}`}
       </div>
       {/* แสดงจำนวนครั้งที่ตรวจจับได้ */}
-      <div className="absolute top-4 right-4 z-20 bg-[A4C3D2]/100 px-4 py-2 rounded shadow font-bold text-black">
+      <div className="absolute top-4 right-4 z-20 bg-[#A4C3D2] px-4 py-2 rounded shadow font-bold text-black">
         จำนวนครั้งที่ตรวจจับ: {count.current}
       </div>
       {/* ปุ่มเลือกท่า */}
-      <div className="absolute top-20 left-4 z-10 flex flex-col gap-2 bg-[A4C3D2]/100 p-2 rounded text-black">
+      <div className="absolute top-20 left-4 z-10 flex flex-col gap-2 bg-[#A4C3D2] p-2 rounded text-black">
         <button
           onClick={() => setSelectedPose("auto")}
           className={selectedPose === "auto" ? "font-bold" : ""}
