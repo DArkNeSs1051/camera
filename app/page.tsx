@@ -14,7 +14,7 @@ export default function Home() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const detectorRef = useRef<posedetection.PoseDetector | null>(null);
-  const [selectedPose, setSelectedPose] = useState<string>("auto"); // เพิ่ม state
+  const [selectedPose, setSelectedPose] = useState<string>(""); // เริ่มต้นไม่เลือกท่า
 
   const count = useRef(0);
   const lastDetectedPose = useRef<string | null>(null);
@@ -170,7 +170,7 @@ export default function Home() {
       (Math.abs(leftElbowAngle) > 160 && Math.abs(leftElbowAngle) < 200) ||
       (Math.abs(rightElbowAngle) > 160 && Math.abs(rightElbowAngle) < 200);
 
-    // วางแขนแนวตั้งมากขึ้น ข้อมือควรต่ำกว่าไหล่ (ระหว่างยกดัมเบลลง)
+    // วางแขนแนวตั้งมากขึ้น ข้อมือควรต่ำกว่าไหล่ (ระหว่างยกุมเบลลง)
     const leftWristBelowShoulder = leftWrist.y > leftShoulder.y;
     const rightWristBelowShoulder = rightWrist.y > rightShoulder.y;
 
@@ -218,7 +218,7 @@ export default function Home() {
     const leftKneeAngle = getAngle(leftHip, leftKnee, leftAnkle);
     const rightKneeAngle = getAngle(rightHip, rightKnee, rightAnkle);
 
-    // คำนวณมุมลำตัว (หลัง) เพื่อช่วยตรวจสอบหลังตรง
+    // คำนวณมุมลำตัว (หลัง) เพื่มูลช่วยตรวจสอบหลังตรง
     const leftBodyAngle = getAngle(leftShoulder, leftHip, leftKnee);
     const rightBodyAngle = getAngle(rightShoulder, rightHip, rightKnee);
 
@@ -457,8 +457,8 @@ export default function Home() {
       isConfident(rightAnkle) &&
       isConfident(nose)
     ) {
-      // ตรวจจับเฉพาะท่าที่เลือก
-      if (selectedPose === "Push-up" || selectedPose === "auto")
+      // ตรวจจับเฉพาะท่าที่เลือกเท่านั้น
+      if (selectedPose === "Push-up")
         detectPushUp(
           leftShoulder,
           leftElbow,
@@ -472,7 +472,7 @@ export default function Home() {
           rightKnee,
           nose
         );
-      if (selectedPose === "Bench Press" || selectedPose === "auto")
+      if (selectedPose === "Bench Press")
         detectBenchPress(
           leftShoulder,
           leftElbow,
@@ -485,7 +485,7 @@ export default function Home() {
           rightHip,
           rightKnee
         );
-      if (selectedPose === "Squat" || selectedPose === "auto")
+      if (selectedPose === "Squat")
         detectSquat(
           leftHip,
           leftKnee,
@@ -496,7 +496,7 @@ export default function Home() {
           leftShoulder,
           rightShoulder
         );
-      if (selectedPose === "Leg Lunge" || selectedPose === "auto")
+      if (selectedPose === "Leg Lunge")
         detectLunge(
           leftHip,
           leftKnee,
@@ -507,7 +507,7 @@ export default function Home() {
           leftShoulder,
           rightShoulder
         );
-      if (selectedPose === "Plank" || selectedPose === "auto")
+      if (selectedPose === "Plank")
         detectPlank(
           leftShoulder,
           rightShoulder,
@@ -516,7 +516,7 @@ export default function Home() {
           leftAnkle,
           rightAnkle
         );
-      if (selectedPose === "Side Plank" || selectedPose === "auto")
+      if (selectedPose === "Side Plank")
         detectSidePlank(
           leftShoulder,
           rightShoulder,
@@ -558,7 +558,8 @@ export default function Home() {
       const detector = await posedetection.createDetector(
         posedetection.SupportedModels.MoveNet,
         {
-          modelType: posedetection.movenet.modelType.SINGLEPOSE_THUNDER,
+          modelType: "singlepose-thunder",
+          enableSmoothing: true,
         }
       );
       detectorRef.current = detector;
@@ -618,86 +619,29 @@ export default function Home() {
 
   return (
     <div className="w-full h-screen flex items-center justify-center bg-black relative">
-      <div className="relative w-full h-full aspect-video">
-        <video
-          ref={videoRef}
-          className="absolute w-full h-full object-contain"
-          style={{
-            transform: "scaleX(-1)",
-            width: "100%",
-            height: "100%",
-            objectFit: "contain",
-          }}
-          autoPlay
-          muted
-          playsInline
-        />
-        <canvas
-          ref={canvasRef}
-          className="absolute w-full h-full object-contain"
-          style={{
-            pointerEvents: "none",
-            width: "100%",
-            height: "100%",
-            objectFit: "contain",
-          }}
-        />
-      </div>
       {/* แสดงสถานะท่าที่กำลังตรวจจับ */}
-      <div className="absolute top-4 left-4 z-20 bg-[#A4C3D2] px-4 py-2 rounded shadow font-bold text-black">
-        {selectedPose === "auto"
-          ? "กำลังตรวจจับ: อัตโนมัติ (ทุกท่า)"
-          : `กำลังตรวจจับ: ${selectedPose}`}
+      <div className="absolute top-4 left-4 z-20 bg-white/90 px-4 py-2 rounded shadow font-bold text-black">
+        {selectedPose 
+          ? `กำลังตรวจจับ: ${selectedPose}`
+          : "กรุณาเลือกท่าที่ต้องการตรวจจับ"}
       </div>
+      
       {/* แสดงจำนวนครั้งที่ตรวจจับได้ */}
-      <div className="absolute top-4 right-4 z-20 bg-[#A4C3D2] px-4 py-2 rounded shadow font-bold text-black">
+      <div className="absolute top-4 right-4 z-20 bg-white/90 px-4 py-2 rounded shadow font-bold text-black">
         จำนวนครั้งที่ตรวจจับ: {count.current}
       </div>
+      
       {/* ปุ่มเลือกท่า */}
-      <div className="absolute top-20 left-4 z-10 flex flex-col gap-2 bg-[#A4C3D2] p-2 rounded text-black">
-        <button
-          onClick={() => setSelectedPose("auto")}
-          className={selectedPose === "auto" ? "font-bold" : ""}
-        >
-          Auto
-        </button>
-        <button
-          onClick={() => setSelectedPose("Push-up")}
-          className={selectedPose === "Push-up" ? "font-bold" : ""}
-        >
-          Push-up
-        </button>
-        <button
-          onClick={() => setSelectedPose("Bench Press")}
-          className={selectedPose === "Bench Press" ? "font-bold" : ""}
-        >
-          Bench Press
-        </button>
-        <button
-          onClick={() => setSelectedPose("Squat")}
-          className={selectedPose === "Squat" ? "font-bold" : ""}
-        >
-          Squat
-        </button>
-        <button
-          onClick={() => setSelectedPose("Leg Lunge")}
-          className={selectedPose === "Leg Lunge" ? "font-bold" : ""}
-        >
-          Leg Lunge
-        </button>
-        <button
-          onClick={() => setSelectedPose("Plank")}
-          className={selectedPose === "Plank" ? "font-bold" : ""}
-        >
-          Plank
-        </button>
-        <button
-          onClick={() => setSelectedPose("Side Plank")}
-          className={selectedPose === "Side Plank" ? "font-bold" : ""}
-        >
-          Side Plank
-        </button>
+      <div className="absolute top-20 left-4 z-10 flex flex-col gap-2 bg-white/80 p-2 rounded">
+        <button onClick={() => setSelectedPose("Push-up")} className={selectedPose === "Push-up" ? "font-bold" : ""}>Push-up</button>
+        <button onClick={() => setSelectedPose("Bench Press")} className={selectedPose === "Bench Press" ? "font-bold" : ""}>Bench Press</button>
+        <button onClick={() => setSelectedPose("Squat")} className={selectedPose === "Squat" ? "font-bold" : ""}>Squat</button>
+        <button onClick={() => setSelectedPose("Leg Lunge")} className={selectedPose === "Leg Lunge" ? "font-bold" : ""}>Leg Lunge</button>
+        <button onClick={() => setSelectedPose("Plank")} className={selectedPose === "Plank" ? "font-bold" : ""}>Plank</button>
+        <button onClick={() => setSelectedPose("Side Plank")} className={selectedPose === "Side Plank" ? "font-bold" : ""}>Side Plank</button>
       </div>
+      
+      {/* ... existing code ... */}
     </div>
   );
 }
