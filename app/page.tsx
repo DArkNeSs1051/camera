@@ -14,7 +14,7 @@ export default function Home() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const detectorRef = useRef<posedetection.PoseDetector | null>(null);
-  const [selectedPose, setSelectedPose] = useState<string>(""); // เริ่มต้นไม่เลือกท่า
+  const [selectedPose, setSelectedPose] = useState<string>("");
 
   const count = useRef(0);
   const lastDetectedPose = useRef<string | null>(null);
@@ -621,26 +621,56 @@ export default function Home() {
     <div className="w-full h-screen flex items-center justify-center bg-black relative">
       {/* แสดงสถานะท่าที่กำลังตรวจจับ */}
       <div className="absolute top-4 left-4 z-20 bg-white/90 px-4 py-2 rounded shadow font-bold text-black">
-        {selectedPose 
+        {selectedPose
           ? `กำลังตรวจจับ: ${selectedPose}`
           : "กรุณาเลือกท่าที่ต้องการตรวจจับ"}
       </div>
-      
+
       {/* แสดงจำนวนครั้งที่ตรวจจับได้ */}
       <div className="absolute top-4 right-4 z-20 bg-white/90 px-4 py-2 rounded shadow font-bold text-black">
         จำนวนครั้งที่ตรวจจับ: {count.current}
       </div>
-      
+
       {/* ปุ่มเลือกท่า */}
       <div className="absolute top-20 left-4 z-10 flex flex-col gap-2 bg-white/80 p-2 rounded">
-        <button onClick={() => setSelectedPose("Push-up")} className={selectedPose === "Push-up" ? "font-bold" : ""}>Push-up</button>
-        <button onClick={() => setSelectedPose("Bench Press")} className={selectedPose === "Bench Press" ? "font-bold" : ""}>Bench Press</button>
-        <button onClick={() => setSelectedPose("Squat")} className={selectedPose === "Squat" ? "font-bold" : ""}>Squat</button>
-        <button onClick={() => setSelectedPose("Leg Lunge")} className={selectedPose === "Leg Lunge" ? "font-bold" : ""}>Leg Lunge</button>
-        <button onClick={() => setSelectedPose("Plank")} className={selectedPose === "Plank" ? "font-bold" : ""}>Plank</button>
-        <button onClick={() => setSelectedPose("Side Plank")} className={selectedPose === "Side Plank" ? "font-bold" : ""}>Side Plank</button>
+        <button
+          onClick={() => setSelectedPose("Push-up")}
+          className={selectedPose === "Push-up" ? "font-bold" : ""}
+        >
+          Push-up
+        </button>
+        <button
+          onClick={() => setSelectedPose("Bench Press")}
+          className={selectedPose === "Bench Press" ? "font-bold" : ""}
+        >
+          Bench Press
+        </button>
+        <button
+          onClick={() => setSelectedPose("Squat")}
+          className={selectedPose === "Squat" ? "font-bold" : ""}
+        >
+          Squat
+        </button>
+        <button
+          onClick={() => setSelectedPose("Leg Lunge")}
+          className={selectedPose === "Leg Lunge" ? "font-bold" : ""}
+        >
+          Leg Lunge
+        </button>
+        <button
+          onClick={() => setSelectedPose("Plank")}
+          className={selectedPose === "Plank" ? "font-bold" : ""}
+        >
+          Plank
+        </button>
+        <button
+          onClick={() => setSelectedPose("Side Plank")}
+          className={selectedPose === "Side Plank" ? "font-bold" : ""}
+        >
+          Side Plank
+        </button>
       </div>
-      
+
       {/* ... existing code ... */}
     </div>
   );
