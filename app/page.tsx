@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import * as tf from "@tensorflow/tfjs";
 import * as posedetection from "@tensorflow-models/pose-detection";
 import "@tensorflow/tfjs-backend-webgl";
@@ -14,6 +14,7 @@ export default function Home() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const detectorRef = useRef<posedetection.PoseDetector | null>(null);
+  const [selectedPose, setSelectedPose] = useState<string>("auto"); // เพิ่ม state
 
   const count = useRef(0);
   const lastDetectedPose = useRef<string | null>(null);
@@ -456,77 +457,74 @@ export default function Home() {
       isConfident(rightAnkle) &&
       isConfident(nose)
     ) {
-      // ตรวจจับ push-up
-      detectPushUp(
-        leftShoulder,
-        leftElbow,
-        leftWrist,
-        rightShoulder,
-        rightElbow,
-        rightWrist,
-        leftHip,
-        leftKnee,
-        rightHip,
-        rightKnee,
-        nose
-      );
-      // ตรวจจับ dumbbell bench press
-      detectBenchPress(
-        leftShoulder,
-        leftElbow,
-        leftWrist,
-        rightShoulder,
-        rightElbow,
-        rightWrist,
-        leftHip,
-        leftKnee,
-        rightHip,
-        rightKnee
-      );
-
-      // ตรวจจับ squat
-      detectSquat(
-        leftHip,
-        leftKnee,
-        leftAnkle,
-        rightHip,
-        rightKnee,
-        rightAnkle,
-        leftShoulder,
-        rightShoulder
-      );
-
-      // ตรวจจับ Leg Lunge
-      detectLunge(
-        leftHip,
-        leftKnee,
-        leftAnkle,
-        rightHip,
-        rightKnee,
-        rightAnkle,
-        leftShoulder,
-        rightShoulder
-      );
-
-      // ตรวจจับ Plank
-      detectPlank(
-        leftShoulder,
-        rightShoulder,
-        leftHip,
-        rightHip,
-        leftAnkle,
-        rightAnkle
-      );
-
-      // ตรวจจับ Side Plank
-      detectSidePlank(
-        leftShoulder,
-        rightShoulder,
-        leftHip,
-        rightHip,
-        leftAnkle,
-        rightAnkle
-      );
+      // ตรวจจับเฉพาะท่าที่เลือก
+      if (selectedPose === "Push-up" || selectedPose === "auto")
+        detectPushUp(
+          leftShoulder,
+          leftElbow,
+          leftWrist,
+          rightShoulder,
+          rightElbow,
+          rightWrist,
+          leftHip,
+          leftKnee,
+          rightHip,
+          rightKnee,
+          nose
+        );
+      if (selectedPose === "Bench Press" || selectedPose === "auto")
+        detectBenchPress(
+          leftShoulder,
+          leftElbow,
+          leftWrist,
+          rightShoulder,
+          rightElbow,
+          rightWrist,
+          leftHip,
+          leftKnee,
+          rightHip,
+          rightKnee
+        );
+      if (selectedPose === "Squat" || selectedPose === "auto")
+        detectSquat(
+          leftHip,
+          leftKnee,
+          leftAnkle,
+          rightHip,
+          rightKnee,
+          rightAnkle,
+          leftShoulder,
+          rightShoulder
+        );
+      if (selectedPose === "Leg Lunge" || selectedPose === "auto")
+        detectLunge(
+          leftHip,
+          leftKnee,
+          leftAnkle,
+          rightHip,
+          rightKnee,
+          rightAnkle,
+          leftShoulder,
+          rightShoulder
+        );
+      if (selectedPose === "Plank" || selectedPose === "auto")
+        detectPlank(
+          leftShoulder,
+          rightShoulder,
+          leftHip,
+          rightHip,
+          leftAnkle,
+          rightAnkle
+        );
+      if (selectedPose === "Side Plank" || selectedPose === "auto")
+        detectSidePlank(
+          leftShoulder,
+          rightShoulder,
+          leftHip,
+          rightHip,
+          leftAnkle,
+          rightAnkle
+        );
     } else {
       pushUpHoldFrames.current = 0;
       isDownPushUp.current = false;
@@ -659,6 +657,50 @@ export default function Home() {
             0
           </span>
         </div>
+      </div>
+      <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 bg-white/80 p-2 rounded">
+        <button
+          onClick={() => setSelectedPose("auto")}
+          className={selectedPose === "auto" ? "font-bold" : ""}
+        >
+          Auto
+        </button>
+        <button
+          onClick={() => setSelectedPose("Push-up")}
+          className={selectedPose === "Push-up" ? "font-bold" : ""}
+        >
+          Push-up
+        </button>
+        <button
+          onClick={() => setSelectedPose("Bench Press")}
+          className={selectedPose === "Bench Press" ? "font-bold" : ""}
+        >
+          Bench Press
+        </button>
+        <button
+          onClick={() => setSelectedPose("Squat")}
+          className={selectedPose === "Squat" ? "font-bold" : ""}
+        >
+          Squat
+        </button>
+        <button
+          onClick={() => setSelectedPose("Leg Lunge")}
+          className={selectedPose === "Leg Lunge" ? "font-bold" : ""}
+        >
+          Leg Lunge
+        </button>
+        <button
+          onClick={() => setSelectedPose("Plank")}
+          className={selectedPose === "Plank" ? "font-bold" : ""}
+        >
+          Plank
+        </button>
+        <button
+          onClick={() => setSelectedPose("Side Plank")}
+          className={selectedPose === "Side Plank" ? "font-bold" : ""}
+        >
+          Side Plank
+        </button>
       </div>
     </div>
   );
