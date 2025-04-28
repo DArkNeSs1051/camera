@@ -643,22 +643,18 @@ export default function Home() {
           }}
         />
       </div>
-
-      <div className="absolute top-5 left-5 z-20 bg-black/50 text-white rounded p-4 space-y-2">
-        <div className="text-xl">
-          ท่าปัจจุบัน:{" "}
-          <span id="exerciseName" className="font-bold">
-            -
-          </span>
-        </div>
-        <div className="text-xl">
-          จำนวนครั้ง:{" "}
-          <span id="repCounter" className="font-bold">
-            0
-          </span>
-        </div>
+      {/* แสดงสถานะท่าที่กำลังตรวจจับ */}
+      <div className="absolute top-4 left-4 z-20 bg-white/90 px-4 py-2 rounded shadow font-bold text-black">
+        {selectedPose === "auto"
+          ? "กำลังตรวจจับ: อัตโนมัติ (ทุกท่า)"
+          : `กำลังตรวจจับ: ${selectedPose}`}
       </div>
-      <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 bg-white/80 p-2 rounded">
+      {/* แสดงจำนวนครั้งที่ตรวจจับได้ */}
+      <div className="absolute top-4 right-4 z-20 bg-white/90 px-4 py-2 rounded shadow font-bold text-black">
+        จำนวนครั้งที่ตรวจจับ: {count.current}
+      </div>
+      {/* ปุ่มเลือกท่า */}
+      <div className="absolute top-20 left-4 z-10 flex flex-col gap-2 bg-white/80 p-2 rounded">
         <button
           onClick={() => setSelectedPose("auto")}
           className={selectedPose === "auto" ? "font-bold" : ""}
