@@ -558,7 +558,7 @@ export default function Home() {
       const detector = await posedetection.createDetector(
         posedetection.SupportedModels.MoveNet,
         {
-          modelType: "singlepose-thunder",
+          modelType: posedetection.movenet.modelType.SINGLEPOSE_THUNDER,
           enableSmoothing: true,
         }
       );
