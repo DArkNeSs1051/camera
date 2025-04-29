@@ -619,6 +619,31 @@ export default function Home() {
 
   return (
     <div className="w-full h-screen flex items-center justify-center bg-black relative">
+      <div className="relative w-full h-full aspect-video">
+        <video
+          ref={videoRef}
+          className="absolute w-full h-full object-contain"
+          style={{
+            transform: "scaleX(-1)",
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+          }}
+          autoPlay
+          muted
+          playsInline
+        />
+        <canvas
+          ref={canvasRef}
+          className="absolute w-full h-full object-contain"
+          style={{
+            pointerEvents: "none",
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+          }}
+        />
+      </div>
       {/* แสดงสถานะท่าที่กำลังตรวจจับ */}
       <div className="absolute top-4 left-4 z-20 bg-white/90 px-4 py-2 rounded shadow font-bold text-black">
         {selectedPose
