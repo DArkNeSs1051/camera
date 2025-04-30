@@ -116,7 +116,7 @@ export default function Home() {
     SKELETON_CONNECTIONS.forEach(([i, j]) => {
       const kp1 = keypoints[i];
       const kp2 = keypoints[j];
-      if (kp1?.score && kp2?.score && kp1.score > 0.5 && kp2.score > 0.5) {
+      if (kp1?.score && kp2?.score && kp1.score > 0.3 && kp2.score > 0.3) {
         ctx.beginPath();
         ctx.moveTo(kp1.x, kp1.y);
         ctx.lineTo(kp2.x, kp2.y);
@@ -125,7 +125,7 @@ export default function Home() {
     });
 
     keypoints.forEach((kp) => {
-      if (kp?.score && kp.score > 0.5) {
+      if (kp?.score && kp.score > 0.3) {
         ctx.beginPath();
         ctx.arc(kp.x, kp.y, 5, 0, 2 * Math.PI);
         ctx.fill();
@@ -135,7 +135,7 @@ export default function Home() {
 
   const handlePose = (keypoints: Point[]) => {
     const now = Date.now();
-    const valid = keypoints.every((k) => k?.score && k.score > 0.5);
+    const valid = keypoints.every((k) => k?.score && k.score > 0.3);
     if (!valid) return;
 
     const get = (i: number) => keypoints[i];
