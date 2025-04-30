@@ -56,12 +56,18 @@ export default function Home() {
 
   useEffect(() => {
     const init = async () => {
+      tf.env().set("WEBGL_CPU_FORWARD", false);
+      tf.env().set("WEBGL_PACK", true);
+      tf.env().set("WEBGL_VERSION", 1);
       await tf.setBackend("webgl");
       await tf.ready();
 
       const detector = await posedetection.createDetector(
         posedetection.SupportedModels.MoveNet,
-        { modelType: "singlepose-thunder", enableSmoothing: true }
+        {
+          modelType: posedetection.movenet.modelType.SINGLEPOSE_THUNDER,
+          enableSmoothing: true,
+        }
       );
 
       detectorRef.current = detector;
