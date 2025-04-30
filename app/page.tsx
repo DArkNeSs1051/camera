@@ -69,16 +69,18 @@ export default function Home() {
           enableSmoothing: true,
         }
       );
-
       detectorRef.current = detector;
 
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user" },
+      });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.onloadedmetadata = () => videoRef.current?.play();
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play();
+          detectPose();
+        };
       }
-
-      detectPose();
     };
 
     const detectPose = async () => {
@@ -92,7 +94,10 @@ export default function Home() {
 
       const loop = async () => {
         const poses = await detectorRef.current!.estimatePoses(video);
+        ctx.save();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
         poses.forEach((pose) => {
@@ -100,13 +105,14 @@ export default function Home() {
           handlePose(pose.keypoints);
         });
 
+        ctx.restore();
         requestAnimationFrame(loop);
       };
       loop();
     };
 
     init();
-  }, [selectedPose]);
+  }, []); // ✅ เรียก detectPose ครั้งเดียว
 
   const drawSkeleton = (ctx: CanvasRenderingContext2D, keypoints: Point[]) => {
     ctx.lineWidth = 2;
@@ -251,11 +257,11 @@ export default function Home() {
         {POSES.map((pose) => (
           <button
             key={pose}
-            className={`px-3 py-1 rounded ${
-              selectedPose === pose
-                ? "bg-blue-500 text-white"
-                : "bg-gray-700 text-gray-300"
-            }`}
+            className={`px-3 py-1 rounded`}
+            style={{
+              backgroundColor: selectedPose === pose ? "#3b82f6" : "#374151",
+              color: selectedPose === pose ? "#ffffff" : "#d1d5db",
+            }}
             onClick={() => {
               setSelectedPose(pose);
               setCount(0);
@@ -267,9 +273,18 @@ export default function Home() {
           </button>
         ))}
       </div>
-      <div className="relative w-full max-w-4xl aspect-video">
-        <video ref={videoRef} className="hidden" autoPlay playsInline muted />
-        <canvas ref={canvasRef} className="rounded-lg shadow-lg" />
+      <div className="relative w-full max-w-4xl aspect-video flex items-center justify-center">
+        <video
+          ref={videoRef}
+          className="hidden"
+          autoPlay
+          playsInline
+          muted
+          style={{
+            position: "absolute",
+          }}
+        />
+        <canvas ref={canvasRef} className="rounded-lg shadow-lg absolute" />
       </div>
       <div className="mt-4 text-lg">
         {selectedPose === "Plank" || selectedPose === "Side Plank" ? (
