@@ -251,13 +251,13 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-4 flex flex-col items-center">
+    <div className="w-full h-full bg-gray-900 text-white p-4 flex flex-col items-center">
       <h1 className="text-2xl font-bold mb-4">🧠 AI Pose Tracker</h1>
       <div className="flex gap-2 mb-4">
         {POSES.map((pose) => (
           <button
             key={pose}
-            className={`px-3 py-1 rounded`}
+            className={`px-3 py-2 rounded-lg font-semibold`}
             style={{
               backgroundColor: selectedPose === pose ? "#3b82f6" : "#374151",
               color: selectedPose === pose ? "#ffffff" : "#d1d5db",
@@ -273,18 +273,26 @@ export default function Home() {
           </button>
         ))}
       </div>
-      <div className="relative w-full max-w-4xl aspect-video flex items-center justify-center">
+      <div className="relative w-full aspect-video flex items-center justify-center">
         <video
           ref={videoRef}
-          className="hidden"
+          className="hidden absolute object-contain"
           autoPlay
           playsInline
           muted
           style={{
-            position: "absolute",
+            width: "100%",
+            height: "100%",
           }}
         />
-        <canvas ref={canvasRef} className="rounded-lg shadow-lg absolute" />
+        <canvas
+          ref={canvasRef}
+          className="absolute object-contain"
+          style={{
+            width: "100%",
+            height: "100%",
+          }}
+        />
       </div>
       <div className="mt-4 text-lg">
         {selectedPose === "Plank" || selectedPose === "Side Plank" ? (
