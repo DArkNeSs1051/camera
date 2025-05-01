@@ -53,7 +53,7 @@ export default function Home() {
   const holdStart = useRef<number | null>(null);
   const lastCountTime = useRef<number>(0);
 
-  const COUNT_DELAY = 800;
+  const COUNT_DELAY = 1500; // เพิ่ม delay ให้มากขึ้น
 
   useEffect(() => {
     const init = async () => {
@@ -160,17 +160,20 @@ export default function Home() {
     ) => {
       if (downCondLeft || downCondRight) {
         if (!isHolding) {
-          holdStart.current = now;
+          holdStart.current = Date.now();
           setIsHolding(true);
         }
       } else if (
         (upCondLeft || upCondRight) &&
         isHolding &&
-        now - lastCountTime.current > COUNT_DELAY
+        Date.now() - lastCountTime.current > COUNT_DELAY
       ) {
-        setCount((prev) => prev + 1);
-        lastCountTime.current = now;
-        setSummary(`คุณทำ ${poseName} ไปแล้ว ${count + 1} ครั้ง`);
+        setCount((prev) => {
+          const newCount = prev + 1;
+          setSummary(`คุณทำ ${poseName} ไปแล้ว ${newCount} ครั้ง`);
+          return newCount;
+        });
+        lastCountTime.current = Date.now();
         setIsHolding(false);
         holdStart.current = null;
       } else if (!downCondLeft && !downCondRight) {
