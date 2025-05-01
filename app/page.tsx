@@ -1,4 +1,4 @@
-// โค้ดนี้รวมฟังก์ชันตรวจจับ Push-up, Squat, Bench Press, Leg Lunge เพิ่มจากเวอร์ชันเดิมแล้ว
+// โ็ดนี้รวมฟังก์ชันตรวจจับ Push-up, Squat, Bench Press, Leg Lunge เพิ่มจากเวอร์ชันเดิมแล้ว
 
 "use client";
 
@@ -44,6 +44,7 @@ export default function Home() {
   const detectorRef = useRef<posedetection.PoseDetector | null>(null);
 
   const [selectedPose, setSelectedPose] = useState("auto");
+  const selectedPoseRef = useRef(selectedPose);
   const [count, setCount] = useState(0);
   const [plankTime, setPlankTime] = useState(0);
   const [isHolding, setIsHolding] = useState(false);
@@ -141,22 +142,29 @@ export default function Home() {
 
   const handlePose = (keypoints: Point[]) => {
     const now = Date.now();
-    const valid = keypoints.every((k) => k?.score && k.score > 0.3);
-    if (!valid) return;
+    // const valid = keypoints.every((k) => k?.score && k.score > 0.3);
+    // if (!valid) return;
 
     const get = (i: number) => keypoints[i];
 
     const angle = (a: number, b: number, c: number) =>
       getAngle(get(a), get(b), get(c));
 
-    const detect = (upCond: boolean, downCond: boolean, poseName: string) => {
-      if (downCond) {
+    // เพิ่มฟังก์ชันตรวจสอบสองฝั่ง
+    const detectBothSides = (
+      upCondLeft: boolean,
+      downCondLeft: boolean,
+      upCondRight: boolean,
+      downCondRight: boolean,
+      poseName: string
+    ) => {
+      if (downCondLeft || downCondRight) {
         if (!isHolding) {
           holdStart.current = now;
           setIsHolding(true);
         }
       } else if (
-        upCond &&
+        (upCondLeft || upCondRight) &&
         isHolding &&
         now - lastCountTime.current > COUNT_DELAY
       ) {
@@ -165,45 +173,62 @@ export default function Home() {
         setSummary(`คุณทำ ${poseName} ไปแล้ว ${count + 1} ครั้ง`);
         setIsHolding(false);
         holdStart.current = null;
-      } else if (!downCond) {
+      } else if (!downCondLeft && !downCondRight) {
         setIsHolding(false);
       }
     };
 
-    switch (selectedPose) {
+    const poseName = selectedPoseRef.current;
+
+    switch (poseName) {
       case "Push-up": {
-        const angleElbow = angle(5, 7, 9);
-        const angleBody = angle(5, 11, 13);
-        detect(
-          angleElbow > 160,
-          angleElbow > 60 && angleElbow < 120 && angleBody > 160,
+        // ซ้าย
+        const angleElbowLeft = angle(5, 7, 9);
+        const angleBodyLeft = angle(5, 11, 13);
+        // ขวา
+        const angleElbowRight = angle(6, 8, 10);
+        const angleBodyRight = angle(6, 12, 14);
+        detectBothSides(
+          angleElbowLeft > 160,
+          angleElbowLeft > 60 && angleElbowLeft < 120 && angleBodyLeft > 160,
+          angleElbowRight > 160,
+          angleElbowRight > 60 && angleElbowRight < 120 && angleBodyRight > 160,
           "Push-up"
         );
         break;
       }
       case "Bench Press": {
-        const angleElbow = angle(5, 7, 9);
-        detect(
-          angleElbow > 160,
-          angleElbow > 60 && angleElbow < 120,
+        const angleElbowLeft = angle(5, 7, 9);
+        const angleElbowRight = angle(6, 8, 10);
+        detectBothSides(
+          angleElbowLeft > 160,
+          angleElbowLeft > 60 && angleElbowLeft < 120,
+          angleElbowRight > 160,
+          angleElbowRight > 60 && angleElbowRight < 120,
           "Bench Press"
         );
         break;
       }
       case "Squat": {
-        const angleKnee = angle(11, 13, 15);
-        detect(angleKnee > 160, angleKnee > 60 && angleKnee < 120, "Squat");
+        const angleKneeLeft = angle(11, 13, 15);
+        const angleKneeRight = angle(12, 14, 16);
+        detectBothSides(
+          angleKneeLeft > 160,
+          angleKneeLeft > 60 && angleKneeLeft < 120,
+          angleKneeRight > 160,
+          angleKneeRight > 60 && angleKneeRight < 120,
+          "Squat"
+        );
         break;
       }
       case "Leg Lunge": {
         const angleKneeLeft = angle(11, 13, 15);
         const angleKneeRight = angle(12, 14, 16);
-        detect(
-          angleKneeLeft > 160 && angleKneeRight > 160,
-          angleKneeLeft > 60 &&
-            angleKneeLeft < 120 &&
-            angleKneeRight > 60 &&
-            angleKneeRight < 120,
+        detectBothSides(
+          angleKneeLeft > 160,
+          angleKneeLeft > 60 && angleKneeLeft < 120,
+          angleKneeRight > 160,
+          angleKneeRight > 60 && angleKneeRight < 120,
           "Leg Lunge"
         );
         break;
@@ -213,10 +238,8 @@ export default function Home() {
         const leftAngle = getAngle(get(5), get(11), get(15));
         const rightAngle = getAngle(get(6), get(12), get(16));
         const isHoldingPose =
-          leftAngle > 160 &&
-          leftAngle < 200 &&
-          rightAngle > 160 &&
-          rightAngle < 200;
+          (leftAngle > 160 && leftAngle < 200) ||
+          (rightAngle > 160 && rightAngle < 200);
 
         if (isHoldingPose) {
           if (!isHolding) {
@@ -249,6 +272,10 @@ export default function Home() {
     if (angle > 180) angle = 360 - angle;
     return angle;
   };
+
+  useEffect(() => {
+    selectedPoseRef.current = selectedPose;
+  }, [selectedPose]);
 
   return (
     <div className="w-screen min-h-screen bg-gray-900 text-white p-4 flex flex-col items-center justify-start">
