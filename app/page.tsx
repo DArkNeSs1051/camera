@@ -251,13 +251,16 @@ export default function Home() {
   };
 
   return (
-    <div className="w-full h-full bg-gray-900 text-white p-4 flex flex-col items-center">
-      <h1 className="text-2xl font-bold mb-4">🧠 AI Pose Tracker</h1>
-      <div className="flex gap-2 mb-4">
+    <div className="w-screen min-h-screen bg-gray-900 text-white p-4 flex flex-col items-center justify-start">
+      <h1 className="text-2xl sm:text-3xl font-bold mb-4 text-center">
+        🧠 AI Pose Tracker
+      </h1>
+
+      <div className="flex flex-wrap gap-2 mb-4 justify-center">
         {POSES.map((pose) => (
           <button
             key={pose}
-            className={`px-3 py-2 rounded-lg font-semibold`}
+            className="px-4 py-2 rounded-lg font-semibold transition-colors"
             style={{
               backgroundColor: selectedPose === pose ? "#3b82f6" : "#374151",
               color: selectedPose === pose ? "#ffffff" : "#d1d5db",
@@ -273,7 +276,8 @@ export default function Home() {
           </button>
         ))}
       </div>
-      <div className="relative w-full aspect-video flex items-center justify-center">
+
+      <div className="relative w-full max-w-5xl aspect-[4/3] sm:aspect-[16/9] flex items-center justify-center px-4 sm:px-6">
         <video
           ref={videoRef}
           className="hidden absolute object-contain"
@@ -294,7 +298,8 @@ export default function Home() {
           }}
         />
       </div>
-      <div className="mt-4 text-lg">
+
+      <div className="mt-4 text-lg text-center">
         {selectedPose === "Plank" || selectedPose === "Side Plank" ? (
           <div>
             ⏱ เวลาที่ทำได้: {Math.floor(plankTime / 60)}:
@@ -304,8 +309,9 @@ export default function Home() {
           <div>🧮 จำนวนครั้ง: {count}</div>
         )}
       </div>
+
       {summary && (
-        <div className="mt-2 bg-green-100 text-black px-4 py-2 rounded shadow">
+        <div className="mt-2 bg-green-100 text-black px-4 py-2 rounded shadow text-center max-w-md w-full">
           ✅ สรุปผล: {summary}
         </div>
       )}
