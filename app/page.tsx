@@ -48,6 +48,7 @@ export default function Home() {
   const [count, setCount] = useState(0);
   const [plankTime, setPlankTime] = useState(0);
   const [isHolding, setIsHolding] = useState(false);
+  const isHoldingRef = useRef(isHolding); // เพิ่มบรรทัดนี้
   const [summary, setSummary] = useState("");
 
   const holdStart = useRef<number | null>(null);
@@ -158,10 +159,13 @@ export default function Home() {
       downCondRight: boolean,
       poseName: string
     ) => {
+      console.log("isHolding:", isHoldingRef.current); // เปลี่ยนมาใช้ ref
       if (downCondLeft || downCondRight) {
-        if (!isHolding) {
+        if (!isHoldingRef.current) {
           holdStart.current = Date.now();
           setIsHolding(true);
+          isHoldingRef.current = true; // เพิ่มบรรทัดนี้
+          console.log("first");
         }
         // ถ้ากลับมาทำท่า ให้ยกเลิก releaseTimeout
         if (releaseTimeout.current) {
@@ -170,7 +174,7 @@ export default function Home() {
         }
       } else if (
         (upCondLeft || upCondRight) &&
-        isHolding &&
+        isHoldingRef.current &&
         Date.now() - lastCountTime.current > COUNT_DELAY
       ) {
         setCount((prev) => {
@@ -180,16 +184,19 @@ export default function Home() {
         });
         lastCountTime.current = Date.now();
         setIsHolding(false);
+        isHoldingRef.current = false; // เพิ่มบรรทัดนี้
         holdStart.current = null;
+        console.log("sec");
       } else if (
         !downCondLeft &&
         !downCondRight &&
-        isHolding &&
+        isHoldingRef.current &&
         !releaseTimeout.current
       ) {
         // ถ้าหลุดจากท่า ให้รอ 400ms ก่อนรีเซ็ต isHolding
         releaseTimeout.current = setTimeout(() => {
           setIsHolding(false);
+          isHoldingRef.current = false; // เพิ่มบรรทัดนี้
           releaseTimeout.current = null;
         }, 400);
       }
