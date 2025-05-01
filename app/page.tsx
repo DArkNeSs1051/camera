@@ -52,6 +52,7 @@ export default function Home() {
 
   const holdStart = useRef<number | null>(null);
   const lastCountTime = useRef<number>(0);
+  const releaseTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const COUNT_DELAY = 1500; // เพิ่ม delay ให้มากขึ้น
 
@@ -149,8 +150,6 @@ export default function Home() {
 
     const angle = (a: number, b: number, c: number) =>
       getAngle(get(a), get(b), get(c));
-
-    const releaseTimeout = useRef<NodeJS.Timeout | null>(null);
 
     const detectBothSides = (
       upCondLeft: boolean,
