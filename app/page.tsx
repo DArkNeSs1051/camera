@@ -150,7 +150,8 @@ export default function Home() {
     const angle = (a: number, b: number, c: number) =>
       getAngle(get(a), get(b), get(c));
 
-    // เพิ่มฟังก์ชันตรวจสอบสองฝั่ง
+    const releaseTimeout = useRef<NodeJS.Timeout | null>(null);
+
     const detectBothSides = (
       upCondLeft: boolean,
       downCondLeft: boolean,
@@ -162,6 +163,11 @@ export default function Home() {
         if (!isHolding) {
           holdStart.current = Date.now();
           setIsHolding(true);
+        }
+        // ถ้ากลับมาทำท่า ให้ยกเลิก releaseTimeout
+        if (releaseTimeout.current) {
+          clearTimeout(releaseTimeout.current);
+          releaseTimeout.current = null;
         }
       } else if (
         (upCondLeft || upCondRight) &&
@@ -176,8 +182,17 @@ export default function Home() {
         lastCountTime.current = Date.now();
         setIsHolding(false);
         holdStart.current = null;
-      } else if (!downCondLeft && !downCondRight) {
-        setIsHolding(false);
+      } else if (
+        !downCondLeft &&
+        !downCondRight &&
+        isHolding &&
+        !releaseTimeout.current
+      ) {
+        // ถ้าหลุดจากท่า ให้รอ 400ms ก่อนรีเซ็ต isHolding
+        releaseTimeout.current = setTimeout(() => {
+          setIsHolding(false);
+          releaseTimeout.current = null;
+        }, 400);
       }
     };
 
