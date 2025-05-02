@@ -219,13 +219,31 @@ export default function Home() {
         break;
       }
       case "Bench Press": {
-        const angleElbowLeft = angle(5, 7, 9);
-        const angleElbowRight = angle(6, 8, 10);
+        const angleElbowLeft = angle(5, 7, 9); // Shoulder - Elbow - Wrist (ซ้าย)
+        const angleElbowRight = angle(6, 8, 10); // Shoulder - Elbow - Wrist (ขวา)
+
+        const angleShoulderLeft = angle(11, 5, 7); // Hip - Shoulder - Elbow (ซ้าย)
+        const angleShoulderRight = angle(12, 6, 8); // Hip - Shoulder - Elbow (ขวา)
+
+        const elbowShoulderDiffLeft = Math.abs(
+          angleElbowLeft - angleShoulderLeft
+        );
+        const elbowShoulderDiffRight = Math.abs(
+          angleElbowRight - angleShoulderRight
+        );
+
+        const isLeftValid = elbowShoulderDiffLeft > 15;
+        const isRightValid = elbowShoulderDiffRight > 15;
+
         detectBothSides(
-          angleElbowLeft > 160,
-          angleElbowLeft < 90,
-          angleElbowRight > 160,
-          angleElbowRight < 90,
+          // ข้างซ้าย: เหยียด และ มุมไม่ทับกัน
+          angleElbowLeft > 160 && isLeftValid,
+          angleElbowLeft < 90 && isLeftValid,
+
+          // ข้างขวา: เหยียด และ มุมไม่ทับกัน
+          angleElbowRight > 160 && isRightValid,
+          angleElbowRight < 90 && isRightValid,
+
           "Bench Press"
         );
         break;
