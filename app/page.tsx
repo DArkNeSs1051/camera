@@ -159,13 +159,11 @@ export default function Home() {
       downCondRight: boolean,
       poseName: string
     ) => {
-      console.log("isHolding:", isHoldingRef.current); // เปลี่ยนมาใช้ ref
       if (downCondLeft || downCondRight) {
         if (!isHoldingRef.current) {
           holdStart.current = Date.now();
           setIsHolding(true);
           isHoldingRef.current = true; // เพิ่มบรรทัดนี้
-          console.log("first");
         }
         // ถ้ากลับมาทำท่า ให้ยกเลิก releaseTimeout
         if (releaseTimeout.current) {
@@ -186,7 +184,6 @@ export default function Home() {
         setIsHolding(false);
         isHoldingRef.current = false; // เพิ่มบรรทัดนี้
         holdStart.current = null;
-        console.log("sec");
       } else if (
         !downCondLeft &&
         !downCondRight &&
@@ -226,9 +223,9 @@ export default function Home() {
         const angleElbowRight = angle(6, 8, 10);
         detectBothSides(
           angleElbowLeft > 160,
-          angleElbowLeft > 60 && angleElbowLeft < 120,
+          angleElbowLeft < 90,
           angleElbowRight > 160,
-          angleElbowRight > 60 && angleElbowRight < 120,
+          angleElbowRight < 90,
           "Bench Press"
         );
         break;
