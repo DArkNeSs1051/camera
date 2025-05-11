@@ -1,5 +1,3 @@
-// โ็ดนี้รวมฟังก์ชันตรวจจับ Push-up, Squat, Bench Press, Leg Lunge เพิ่มจากเวอร์ชันเดิมแล้ว
-
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
@@ -36,6 +34,8 @@ const POSES = [
   "Leg Lunge",
   "Plank",
   "Side Plank",
+  "Leg Raises",
+  "Dumbbell Shoulder Press", // เพิ่มท่านี้
 ];
 
 export default function Home() {
@@ -297,6 +297,48 @@ export default function Home() {
           setIsHolding(false);
           holdStart.current = null;
         }
+        break;
+      }
+      case "Leg Raises": {
+        // สมมติว่า Leg Raises คือการยกขาตรง (เช่น นอนราบแล้วยกขาขึ้น)
+        // ใช้ keypoints: สะโพก (11,12), เข่า (13,14), ข้อเท้า (15,16)
+        // ตรวจสอบว่าขาตรง (มุมสะโพก-เข่า-ข้อเท้า > 160) และขาอยู่ในแนวตั้ง (y ของข้อเท้าสูงกว่า y ของสะโพก)
+        const leftLegAngle = getAngle(get(11), get(13), get(15));
+        const rightLegAngle = getAngle(get(12), get(14), get(16));
+        const leftLegUp = leftLegAngle > 160 && get(15).y < get(11).y;
+        const rightLegUp = rightLegAngle > 160 && get(16).y < get(12).y;
+        const leftLegDown = leftLegAngle > 160 && get(15).y > get(11).y + 40;
+        const rightLegDown = rightLegAngle > 160 && get(16).y > get(12).y + 40;
+        detectBothSides(
+          leftLegDown,
+          leftLegUp,
+          rightLegDown,
+          rightLegUp,
+          "Leg Raises"
+        );
+        break;
+      }
+      case "Dumbbell Shoulder Press": {
+        const angleElbowLeft = angle(5, 7, 9);
+        const yWristLeft = get(9).y;
+        const yShoulderLeft = get(5).y;
+        const angleElbowRight = angle(6, 8, 10);
+        const yWristRight = get(10).y;
+        const yShoulderRight = get(6).y;
+
+        // ปรับ threshold ให้กว้างขึ้น
+        const leftUp = angleElbowLeft > 150 && yWristLeft < yShoulderLeft;
+        const rightUp = angleElbowRight > 150 && yWristRight < yShoulderRight;
+        const leftDown = angleElbowLeft < 120 && yWristLeft > yShoulderLeft - 20;
+        const rightDown = angleElbowRight < 120 && yWristRight > yShoulderRight - 20;
+
+        detectBothSides(
+          leftDown,
+          leftUp,
+          rightDown,
+          rightUp,
+          "Dumbbell Shoulder Press"
+        );
         break;
       }
       default:
