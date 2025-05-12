@@ -35,7 +35,10 @@ const POSES = [
   "Plank",
   "Side Plank",
   "Leg Raises",
-  "Dumbbell Shoulder Press", // เพิ่มท่านี้
+  "Russian Twists",
+  "Burpee",
+  "Dumbbell Shoulder Press",
+  "Dumbbell Bench Press", // เพิ่มท่านี้
 ];
 
 export default function Home() {
@@ -318,6 +321,55 @@ export default function Home() {
         );
         break;
       }
+      case "Russian Twists": {
+        // Russian Twists: ตรวจสอบการบิดลำตัวซ้าย-ขวา (เช่น นั่งงอเข่า เอียงตัวไปซ้าย/ขวา)
+        // ใช้ keypoints: ไหล่ซ้าย(5), ไหล่ขวา(6), สะโพกซ้าย(11), สะโพกขวา(12)
+        // เงื่อนไข: ความต่างของ y ระหว่างไล่ซ้าย-ขวา หรือ x ระหว่างไล่กับสะโพกแต่ละข้าง
+        const leftShoulder = get(5);
+        const rightShoulder = get(6);
+        const leftHip = get(11);
+        const rightHip = get(12);
+
+        // ถ้าบิดไปทางซ้าย: ไหล่ซ้ายต่ำกว่าไหล่ขวา และ x ไหล่ซ้าย < x สะโพกซ้าย
+        const twistLeft =
+          leftShoulder.y > rightShoulder.y + 20 &&
+          leftShoulder.x < leftHip.x - 10;
+        // ถ้าบิดไปทางขวา: ไหล่ขวาต่ำกว่าไหล่ซ้าย และ x ไหล่ขวา > x สะโพกขวา
+        const twistRight =
+          rightShoulder.y > leftShoulder.y + 20 &&
+          rightShoulder.x > rightHip.x + 10;
+
+        // กลับสู่ท่าตรงกลาง (ไม่บิด)
+        const center =
+          Math.abs(leftShoulder.y - rightShoulder.y) < 15 &&
+          Math.abs(leftShoulder.x - leftHip.x) < 20 &&
+          Math.abs(rightShoulder.x - rightHip.x) < 20;
+
+        detectBothSides(
+          twistLeft,
+          center,
+          twistRight,
+          center,
+          "Russian Twists"
+        );
+        break;
+      }
+      case "Burpee": {
+        // เงื่อนไข Burpee (อย่างง่าย):
+        // 1. ยืนตรง: สะโพก-เข่า-ข้อเท้า เหยียดตรง (angle > 160)
+        // 2. นั่งยอง/วิดพื้น: สะโพก-เข่า-ข้อเท้า งอ (angle < 100)
+        const leftLegAngle = getAngle(get(11), get(13), get(15));
+        const rightLegAngle = getAngle(get(12), get(14), get(16));
+        // ยืนตรง
+        const standLeft = leftLegAngle > 160;
+        const standRight = rightLegAngle > 160;
+        // นั่งยอง/วิดพื้น
+        const squatLeft = leftLegAngle < 100;
+        const squatRight = rightLegAngle < 100;
+
+        detectBothSides(squatLeft, standLeft, squatRight, standRight, "Burpee");
+        break;
+      }
       case "Dumbbell Shoulder Press": {
         const angleElbowLeft = angle(5, 7, 9);
         const yWristLeft = get(9).y;
@@ -329,8 +381,10 @@ export default function Home() {
         // ปรับ threshold ให้กว้างขึ้น
         const leftUp = angleElbowLeft > 150 && yWristLeft < yShoulderLeft;
         const rightUp = angleElbowRight > 150 && yWristRight < yShoulderRight;
-        const leftDown = angleElbowLeft < 120 && yWristLeft > yShoulderLeft - 20;
-        const rightDown = angleElbowRight < 120 && yWristRight > yShoulderRight - 20;
+        const leftDown =
+          angleElbowLeft < 120 && yWristLeft > yShoulderLeft - 20;
+        const rightDown =
+          angleElbowRight < 120 && yWristRight > yShoulderRight - 20;
 
         detectBothSides(
           leftDown,
@@ -338,6 +392,33 @@ export default function Home() {
           rightDown,
           rightUp,
           "Dumbbell Shoulder Press"
+        );
+        break;
+      }
+      case "Dumbbell Bench Press": {
+        // Dumbbell Bench Press: เหยียดแขนขึ้นตรง (angle > 160) = ขึ้น, งอแขน (angle < 100) = ลง
+        // ซ้าย
+        const angleElbowLeft = angle(5, 7, 9); // Shoulder-Elbow-Wrist
+        const yWristLeft = get(9).y;
+        const yShoulderLeft = get(5).y;
+        // ขวา
+        const angleElbowRight = angle(6, 8, 10);
+        const yWristRight = get(10).y;
+        const yShoulderRight = get(6).y;
+
+        // เงื่อนไขยกขึ้น (เหยียดแขนตรงและข้อมือสูงกว่าหัวไหล่)
+        const leftUp = angleElbowLeft > 160 && yWristLeft < yShoulderLeft + 20;
+        const rightUp = angleElbowRight > 160 && yWristRight < yShoulderRight + 20;
+        // เงื่อนไขงอแขน (ข้อศอกงอและข้อมืออยู่ระดับหัวไหล่หรือต่ำกว่า)
+        const leftDown = angleElbowLeft < 100 && yWristLeft > yShoulderLeft - 20;
+        const rightDown = angleElbowRight < 100 && yWristRight > yShoulderRight - 20;
+
+        detectBothSides(
+          leftDown,
+          leftUp,
+          rightDown,
+          rightUp,
+          "Dumbbell Bench Press"
         );
         break;
       }
