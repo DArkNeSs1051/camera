@@ -80,15 +80,17 @@ export const handlePose = (props: PoseDetection) => {
     if (!keypoints || keypoints.length < 17) {
       return; // ไม่มีข้อมูลเพียงพอสำหรับการตรวจจับ
     }
-    
+
     // ตรวจสอบคะแนนความเชื่อมั่น (confidence score) ของคีย์พอยต์หลัก
     const requiredKeypoints = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
     const minConfidence = 0.3;
-    
+
     const allKeypointsValid = requiredKeypoints.every(
-      (i) => keypoints[i] && (!keypoints[i].score || keypoints[i].score > minConfidence)
+      (i) =>
+        keypoints[i] &&
+        (!keypoints[i].score || keypoints[i].score > minConfidence)
     );
-    
+
     if (!allKeypointsValid) {
       return; // คีย์พอยต์บางจุดมีความเชื่อมั่นต่ำเกินไป
     }
@@ -132,16 +134,19 @@ export const handlePose = (props: PoseDetection) => {
   };
 
   const poseName = selectedPoseRef.current;
-  
+
   // ตรวจสอบว่ามีการเลือกท่าหรือไม่
   if (!poseName || poseName === "") {
     return; // ไม่มีการเลือกท่า
   }
 
   const MIN_ELBOW_ANGLE = 60;
-  const MAX_ELBOW_ANGLE = 120;
-  const STRAIGHT_BODY_ANGLE = 160;
-  const ELBOW_EXTENDED_ANGLE = 160;
+  const MAX_ELBOW_ANGLE = 100;
+  const MIN_BODY_ANGLE = 160;
+  const MAX_BODY_ANGLE = 180;
+  const MIN_ELBOW_EXTENDED_ANGLE = 150;
+  const MAX_ELBOW_EXTENDED_ANGLE = 180;
+  const FLOOR_THRESHOLD = 0.1; // ปรับตามความเหมาะสมของระบบ
 
   switch (poseName) {
     case "Push-up": {
@@ -150,46 +155,69 @@ export const handlePose = (props: PoseDetection) => {
       const angleElbowRight = angle(6, 8, 10); // ไหล่-ข้อศอก-ข้อมือ ขวา
       const angleBodyRight = angle(6, 12, 14); // ไหล่-สะโพก-เข่า ขวา
 
-      // ตรวจว่า "ลง" -> ศอกงอในช่วง 60–120 องศา และลำตัวตรง
+      const leftHipY = keypoints[11].y;
+      const rightHipY = keypoints[12].y;
+      const leftShoulderY = keypoints[5].y;
+      const rightShoulderY = keypoints[6].y;
+
+      const isCloseToFloor =
+        leftHipY > FLOOR_THRESHOLD &&
+        rightHipY > FLOOR_THRESHOLD &&
+        leftShoulderY > FLOOR_THRESHOLD &&
+        rightShoulderY > FLOOR_THRESHOLD;
+
       const isDownLeft =
-        angleElbowLeft > MIN_ELBOW_ANGLE &&
-        angleElbowLeft < MAX_ELBOW_ANGLE &&
-        angleBodyLeft > STRAIGHT_BODY_ANGLE;
+        angleElbowLeft >= MIN_ELBOW_ANGLE &&
+        angleElbowLeft <= MAX_ELBOW_ANGLE &&
+        angleBodyLeft >= MIN_BODY_ANGLE &&
+        angleBodyLeft <= MAX_BODY_ANGLE &&
+        isCloseToFloor;
 
       const isDownRight =
-        angleElbowRight > MIN_ELBOW_ANGLE &&
-        angleElbowRight < MAX_ELBOW_ANGLE &&
-        angleBodyRight > STRAIGHT_BODY_ANGLE;
+        angleElbowRight >= MIN_ELBOW_ANGLE &&
+        angleElbowRight <= MAX_ELBOW_ANGLE &&
+        angleBodyRight >= MIN_BODY_ANGLE &&
+        angleBodyRight <= MAX_BODY_ANGLE &&
+        isCloseToFloor;
 
-      // ตรวจว่า "ขึ้น" -> ศอกเหยียดเกือบตรง (มากกว่า 160 องศา)
-      const isUpLeft = angleElbowLeft > ELBOW_EXTENDED_ANGLE;
-      const isUpRight = angleElbowRight > ELBOW_EXTENDED_ANGLE;
+      const isUpLeft =
+        angleElbowLeft >= MIN_ELBOW_EXTENDED_ANGLE &&
+        angleElbowLeft <= MAX_ELBOW_EXTENDED_ANGLE &&
+        angleBodyLeft >= MIN_BODY_ANGLE &&
+        angleBodyLeft <= MAX_BODY_ANGLE;
+
+      const isUpRight =
+        angleElbowRight >= MIN_ELBOW_EXTENDED_ANGLE &&
+        angleElbowRight <= MAX_ELBOW_EXTENDED_ANGLE &&
+        angleBodyRight >= MIN_BODY_ANGLE &&
+        angleBodyRight <= MAX_BODY_ANGLE;
 
       detectBothSides(isUpLeft, isDownLeft, isUpRight, isDownRight, "Push-up");
 
       break;
     }
+
     case "Bench Press": {
       const angleElbowLeft = angle(5, 7, 9);
       const angleElbowRight = angle(6, 8, 10);
-      
+
       // ตรวจสอบว่าผู้อยู่ในท่านอนหรือไม่ (ไหล่และสะโพกอยู่ในระดับเดียวกัน)
       const leftShoulderY = get(5).y;
       const rightShoulderY = get(6).y;
       const leftHipY = get(11).y;
       const rightHipY = get(12).y;
-      
+
       // ตรวจสอบว่าไหล่และสะโพกอยู่ในแนวเดียวกัน (นอนราบ)
-      const isLyingDown = 
-        Math.abs(leftShoulderY - leftHipY) < 30 && 
+      const isLyingDown =
+        Math.abs(leftShoulderY - leftHipY) < 30 &&
         Math.abs(rightShoulderY - rightHipY) < 30;
-      
+
       // ตรวจสอบว่าแขนอยู่ในตำแหน่งที่ถูกต้อง (ข้อศอกงอลงและเหยียดขึ้น)
       const isLeftArmDown = angleElbowLeft < 90 && isLyingDown;
       const isRightArmDown = angleElbowRight < 90 && isLyingDown;
       const isLeftArmUp = angleElbowLeft > 160 && isLyingDown;
       const isRightArmUp = angleElbowRight > 160 && isLyingDown;
-      
+
       detectBothSides(
         isLeftArmUp,
         isLeftArmDown,
@@ -204,22 +232,16 @@ export const handlePose = (props: PoseDetection) => {
       const angleKneeRight = angle(12, 14, 16);
       const angleHipLeft = angle(5, 11, 13);
       const angleHipRight = angle(6, 12, 14);
-      
+
       // ตรวจสอบว่าเข่างอและสะโพกงอ (ท่าลง)
       const isDownLeft = angleKneeLeft < 120 && angleHipLeft < 120;
       const isDownRight = angleKneeRight < 120 && angleHipRight < 120;
-      
+
       // ตรวจสอบว่าเข่าและสะโพกเหยียดตรง (ท่าขึ้น)
       const isUpLeft = angleKneeLeft > 160 && angleHipLeft > 160;
       const isUpRight = angleKneeRight > 160 && angleHipRight > 160;
-      
-      detectBothSides(
-        isUpLeft,
-        isDownLeft,
-        isUpRight,
-        isDownRight,
-        "Squat"
-      );
+
+      detectBothSides(isUpLeft, isDownLeft, isUpRight, isDownRight, "Squat");
       break;
     }
     case "Leg Lunge": {
@@ -227,14 +249,14 @@ export const handlePose = (props: PoseDetection) => {
       const angleKneeRight = angle(12, 14, 16);
       const angleHipLeft = angle(5, 11, 13);
       const angleHipRight = angle(6, 12, 14);
-      
+
       // ตรวจสอบว่าเข่าข้างหนึ่งงอและอีกข้างเหยียด (ท่าลง)
       const isLeftLegForward = angleKneeLeft < 120 && angleKneeRight > 140;
       const isRightLegForward = angleKneeRight < 120 && angleKneeLeft > 140;
-      
+
       // ตรวจสอบว่าทั้งสองขาเหยียดตรง (ท่าขึ้น)
       const isBothLegsUp = angleKneeLeft > 160 && angleKneeRight > 160;
-      
+
       detectBothSides(
         isBothLegsUp,
         isLeftLegForward || isRightLegForward,
@@ -250,31 +272,34 @@ export const handlePose = (props: PoseDetection) => {
       if (!keypoints || keypoints.length < 17) {
         return;
       }
-      
+
       let isHoldingPose = false;
-      
+
       if (poseName === "Plank") {
         // ตรวจสอบว่าลำตัวตรง (ไหล่-สะโพก-เข่า)
         const leftBodyAngle = getAngle(get(5), get(11), get(13));
         const rightBodyAngle = getAngle(get(6), get(12), get(14));
-        
+
         // ตรวจสอบว่าข้อศอกงอ (ไหล่-ข้อศอก-ข้อมือ)
         const leftElbowAngle = getAngle(get(5), get(7), get(9));
         const rightElbowAngle = getAngle(get(6), get(8), get(10));
-        
-        isHoldingPose = 
-          (leftBodyAngle > 160 && rightBodyAngle > 160) && // ลำตัวตรง
-          (leftElbowAngle < 120 && rightElbowAngle < 120); // ข้อศอกงอ
-      } else { // Side Plank
+
+        isHoldingPose =
+          leftBodyAngle > 160 &&
+          rightBodyAngle > 160 && // ลำตัวตรง
+          leftElbowAngle < 120 &&
+          rightElbowAngle < 120; // ข้อศอกงอ
+      } else {
+        // Side Plank
         // ตรวจสอบว่าลำตัวตรงในแนวด้านข้าง
         const leftSideAngle = getAngle(get(5), get(11), get(15));
         const rightSideAngle = getAngle(get(6), get(12), get(16));
-        
-        isHoldingPose = 
+
+        isHoldingPose =
           (leftSideAngle > 160 && leftSideAngle < 200) ||
           (rightSideAngle > 160 && rightSideAngle < 200);
       }
-      
+
       if (isHoldingPose) {
         if (!isHolding) {
           holdStart.current = now;
@@ -299,18 +324,18 @@ export const handlePose = (props: PoseDetection) => {
       if (!keypoints || keypoints.length < 17) {
         return;
       }
-      
+
       const leftLegAngle = getAngle(get(11), get(13), get(15));
       const rightLegAngle = getAngle(get(12), get(14), get(16));
-      
+
       // ตรวจสอบว่าขาเหยียดตรงและยกขึ้น (ท่าขึ้น)
       const leftLegUp = leftLegAngle > 160 && get(15).y < get(11).y;
       const rightLegUp = rightLegAngle > 160 && get(16).y < get(12).y;
-      
+
       // ตรวจสอบว่าขาเหยียดตรงและลดลง (ท่าลง)
       const leftLegDown = leftLegAngle > 160 && get(15).y > get(11).y + 40;
       const rightLegDown = rightLegAngle > 160 && get(16).y > get(12).y + 40;
-      
+
       detectBothSides(
         leftLegDown,
         leftLegUp,
@@ -368,20 +393,20 @@ export const handlePose = (props: PoseDetection) => {
       // ตรวจสอบมุมของสะโพก (ต้องก้มตัวลง)
       const leftHipAngle = angle(5, 11, 13);
       const rightHipAngle = angle(6, 12, 14);
-      
+
       // ตรวจสอบว่าอยู่ในท่าก้มตัว (bent over)
       const isBentOver = leftHipAngle < 140 && rightHipAngle < 140;
-      
+
       // ตรวจสอบการดึงแขน (row)
       const leftRow = angle(5, 7, 9) < 90;
       const rightRow = angle(6, 8, 10) < 90;
-      
+
       // ตรวจจับท่าเฉพาะเมื่ออยู่ในท่าก้มตัวเท่านั้น
       const leftArmDown = !leftRow && isBentOver;
       const leftArmUp = leftRow && isBentOver;
       const rightArmDown = !rightRow && isBentOver;
       const rightArmUp = rightRow && isBentOver;
-      
+
       detectBothSides(
         leftArmDown,
         leftArmUp,
