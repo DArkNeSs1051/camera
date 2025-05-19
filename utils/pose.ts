@@ -165,7 +165,7 @@ export const handlePose = (props: PoseDetection) => {
 
       // มุมระหว่างไหล่-สะโพก-ข้อเท้า
       const bodyAlignmentAngle = getAngle(shoulder, hip, ankle);
-      const inPlank = bodyAlignmentAngle > 160;
+      const inPlank = bodyAlignmentAngle > 150;
 
       if (!inPlank) {
         // ยังไม่อยู่ในท่า push-up ที่ถูกต้อง
@@ -175,11 +175,11 @@ export const handlePose = (props: PoseDetection) => {
       const averageShoulderY = (leftShoulder.y + rightShoulder.y) / 2;
       const averageHipY = (leftHip.y + rightHip.y) / 2;
 
-      const isDownLeft = averageShoulderY > averageHipY + 50;
-      const isDownRight = averageShoulderY > averageHipY + 50;
+      const isDownLeft = averageShoulderY > averageHipY + 40;
+      const isDownRight = averageShoulderY > averageHipY + 40;
 
-      const isUpLeft = averageShoulderY < averageHipY + 20;
-      const isUpRight = averageShoulderY < averageHipY + 20;
+      const isUpLeft = averageShoulderY < averageHipY + 30;
+      const isUpRight = averageShoulderY < averageHipY + 30;
 
       detectBothSides(isUpLeft, isDownLeft, isUpRight, isDownRight, "Push-up");
       break;
