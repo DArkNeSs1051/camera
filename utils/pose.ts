@@ -116,19 +116,35 @@ export const handlePose = (props: PoseDetection) => {
 
   const poseName = selectedPoseRef.current;
 
+  const MIN_ELBOW_ANGLE = 60;
+  const MAX_ELBOW_ANGLE = 120;
+  const STRAIGHT_BODY_ANGLE = 160;
+  const ELBOW_EXTENDED_ANGLE = 160;
+
   switch (poseName) {
     case "Push-up": {
-      const angleElbowLeft = angle(5, 7, 9);
-      const angleBodyLeft = angle(5, 11, 13);
-      const angleElbowRight = angle(6, 8, 10);
-      const angleBodyRight = angle(6, 12, 14);
-      detectBothSides(
-        angleElbowLeft > 160,
-        angleElbowLeft > 60 && angleElbowLeft < 120 && angleBodyLeft > 160,
-        angleElbowRight > 160,
-        angleElbowRight > 60 && angleElbowRight < 120 && angleBodyRight > 160,
-        "Push-up"
-      );
+      const angleElbowLeft = angle(5, 7, 9); // ไหล่-ข้อศอก-ข้อมือ ซ้าย
+      const angleBodyLeft = angle(5, 11, 13); // ไหล่-สะโพก-เข่า ซ้าย
+      const angleElbowRight = angle(6, 8, 10); // ไหล่-ข้อศอก-ข้อมือ ขวา
+      const angleBodyRight = angle(6, 12, 14); // ไหล่-สะโพก-เข่า ขวา
+
+      // ตรวจว่า "ลง" -> ศอกงอในช่วง 60–120 องศา และลำตัวตรง
+      const isDownLeft =
+        angleElbowLeft > MIN_ELBOW_ANGLE &&
+        angleElbowLeft < MAX_ELBOW_ANGLE &&
+        angleBodyLeft > STRAIGHT_BODY_ANGLE;
+
+      const isDownRight =
+        angleElbowRight > MIN_ELBOW_ANGLE &&
+        angleElbowRight < MAX_ELBOW_ANGLE &&
+        angleBodyRight > STRAIGHT_BODY_ANGLE;
+
+      // ตรวจว่า "ขึ้น" -> ศอกเหยียดเกือบตรง (มากกว่า 160 องศา)
+      const isUpLeft = angleElbowLeft > ELBOW_EXTENDED_ANGLE;
+      const isUpRight = angleElbowRight > ELBOW_EXTENDED_ANGLE;
+
+      detectBothSides(isUpLeft, isDownLeft, isUpRight, isDownRight, "Push-up");
+
       break;
     }
     case "Bench Press": {
@@ -290,16 +306,18 @@ export const handlePose = (props: PoseDetection) => {
       const rightKneeAngle = angle(12, 14, 16);
       const leftElbowAngle = angle(5, 7, 9);
       const rightElbowAngle = angle(6, 8, 10);
-      
+
       // ตรวจสอบว่าแขนอยู่ในตำแหน่งถือดัมเบลล์ที่หน้าอก (ข้อศอกงอ)
-      const armsInGobletPosition = leftElbowAngle < 120 && rightElbowAngle < 120;
-      
+      const armsInGobletPosition =
+        leftElbowAngle < 120 && rightElbowAngle < 120;
+
       // ตรวจสอบตำแหน่งขาเหยียดตรง (ยืน)
       const legsUp = leftKneeAngle > 160 && rightKneeAngle > 160;
-      
+
       // ตรวจสอบตำแหน่งขางอ (สควอท)
-      const legsDown = leftKneeAngle < 120 && rightKneeAngle < 120 && armsInGobletPosition;
-      
+      const legsDown =
+        leftKneeAngle < 120 && rightKneeAngle < 120 && armsInGobletPosition;
+
       detectBothSides(
         legsUp,
         legsDown,
@@ -314,19 +332,21 @@ export const handlePose = (props: PoseDetection) => {
       const rightHipAngle = angle(6, 12, 14);
       const leftKneeAngle = angle(11, 13, 15);
       const rightKneeAngle = angle(12, 14, 16);
-      
+
       // ตรวจสอบว่าแขนเหยียดตรงและอยู่ด้านหน้าของลำตัว
       const armsExtended = get(7).y > get(5).y && get(8).y > get(6).y;
-      
+
       // ตำแหน่งยืนตรง (ท่าเริ่มต้น)
       const standingPosition = leftHipAngle > 160 && rightHipAngle > 160;
-      
+
       // ตำแหน่งก้มตัว (ท่าลง) - สะโพกงอ แต่เข่าเหยียดค่อนข้างตรง
-      const bentPosition = 
-        leftHipAngle < 120 && rightHipAngle < 120 && 
-        leftKneeAngle > 140 && rightKneeAngle > 140 && 
+      const bentPosition =
+        leftHipAngle < 120 &&
+        rightHipAngle < 120 &&
+        leftKneeAngle > 140 &&
+        rightKneeAngle > 140 &&
         armsExtended;
-      
+
       detectBothSides(
         standingPosition,
         bentPosition,
@@ -339,16 +359,18 @@ export const handlePose = (props: PoseDetection) => {
     case "Dumbbell Overhand Tricep Extension": {
       const leftElbowAngle = angle(5, 7, 9);
       const rightElbowAngle = angle(6, 8, 10);
-      
+
       // ตรวจสอบตำแหน่งแขนเหนือศีรษะ
       const armsOverhead = get(7).y < get(5).y && get(8).y < get(6).y;
-      
+
       // ตำแหน่งแขนเหยียดตรง (ท่าเริ่มต้น)
-      const armsExtended = leftElbowAngle > 160 && rightElbowAngle > 160 && armsOverhead;
-      
+      const armsExtended =
+        leftElbowAngle > 160 && rightElbowAngle > 160 && armsOverhead;
+
       // ตำแหน่งแขนงอ (ท่าลง)
-      const armsBent = leftElbowAngle < 90 && rightElbowAngle < 90 && armsOverhead;
-      
+      const armsBent =
+        leftElbowAngle < 90 && rightElbowAngle < 90 && armsOverhead;
+
       detectBothSides(
         armsExtended,
         armsBent,
@@ -361,14 +383,17 @@ export const handlePose = (props: PoseDetection) => {
     case "Dumbbell Side Lateral Raises": {
       const leftShoulderAngle = angle(11, 5, 7);
       const rightShoulderAngle = angle(12, 6, 8);
-      
+
       // ตำแหน่งแขนลง (ท่าเริ่มต้น)
       const armsDown = leftShoulderAngle < 30 && rightShoulderAngle < 30;
-      
+
       // ตำแหน่งแขนยกออกด้านข้าง (ท่าขึ้น)
-      const armsRaised = leftShoulderAngle > 80 && leftShoulderAngle < 110 && 
-                         rightShoulderAngle > 80 && rightShoulderAngle < 110;
-      
+      const armsRaised =
+        leftShoulderAngle > 80 &&
+        leftShoulderAngle < 110 &&
+        rightShoulderAngle > 80 &&
+        rightShoulderAngle < 110;
+
       detectBothSides(
         armsDown,
         armsRaised,
@@ -384,23 +409,23 @@ export const handlePose = (props: PoseDetection) => {
       const rightKneeAngle = angle(12, 14, 16);
       const leftElbowAngle = angle(5, 7, 9);
       const rightElbowAngle = angle(6, 8, 10);
-      
+
       // ตรวจสอบความสูงของสะโพกเทียบกับศีรษะ (สำหรับตรวจจับท่ากระโดด)
       const hipHeight = (get(11).y + get(12).y) / 2;
       const headHeight = get(0).y;
       const isJumping = hipHeight < headHeight + 20; // สะโพกอยู่สูงใกล้เคียงกับศีรษะ
-      
+
       // ตรวจสอบท่ายืน (ท่าเริ่มต้น)
       const isStanding = leftKneeAngle > 160 && rightKneeAngle > 160;
-      
+
       // ตรวจสอบท่าสควอทหรือท่าพุชอัพ (ท่าลง)
-      const isSquatOrPushup = 
+      const isSquatOrPushup =
         (leftKneeAngle < 120 && rightKneeAngle < 120) || // ท่าสควอท
         (leftElbowAngle < 120 && rightElbowAngle < 120); // ท่าพุชอัพ
-      
+
       detectBothSides(
         isStanding || isJumping, // ท่าขึ้น (ยืนหรือกระโดด)
-        isSquatOrPushup,         // ท่าลง (สควอทหรือพุชอัพ)
+        isSquatOrPushup, // ท่าลง (สควอทหรือพุชอัพ)
         isStanding || isJumping,
         isSquatOrPushup,
         "Burpee"
