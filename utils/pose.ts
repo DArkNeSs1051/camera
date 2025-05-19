@@ -76,25 +76,6 @@ export const handlePose = (props: PoseDetection) => {
     downCondRight: boolean,
     poseName: string
   ) => {
-    // ตรวจสอบว่ามีคีย์พอยต์ที่จำเป็นหรือไม่
-    if (!keypoints || keypoints.length < 17) {
-      return; // ไม่มีข้อมูลเพียงพอสำหรับการตรวจจับ
-    }
-
-    // ตรวจสอบคะแนนความเชื่อมั่น (confidence score) ของคีย์พอยต์หลัก
-    const requiredKeypoints = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
-    const minConfidence = 0.3;
-
-    const allKeypointsValid = requiredKeypoints.every(
-      (i) =>
-        keypoints[i] &&
-        (!keypoints[i].score || keypoints[i].score > minConfidence)
-    );
-
-    if (!allKeypointsValid) {
-      return; // คีย์พอยต์บางจุดมีความเชื่อมั่นต่ำเกินไป
-    }
-
     if (downCondLeft || downCondRight) {
       if (!isHoldingRef.current) {
         holdStart.current = Date.now();

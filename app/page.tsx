@@ -137,7 +137,7 @@ export default function Home() {
         </select>
       </div>
 
-      <div className="relative w-full max-w-5xl aspect-video flex items-center justify-center px-4 rounded-lg bg-gray-800">
+      <div className="relative w-full max-w-5xl flex flex-1 items-center justify-center px-4 rounded-lg bg-gray-800">
         <video
           ref={videoRef}
           className="hidden absolute object-contain"
