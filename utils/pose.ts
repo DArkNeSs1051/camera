@@ -140,60 +140,48 @@ export const handlePose = (props: PoseDetection) => {
     return; // ไม่มีการเลือกท่า
   }
 
-  const MIN_ELBOW_ANGLE = 60;
-  const MAX_ELBOW_ANGLE = 100;
-  const MIN_BODY_ANGLE = 160;
-  const MAX_BODY_ANGLE = 180;
-  const MIN_ELBOW_EXTENDED_ANGLE = 150;
-  const MAX_ELBOW_EXTENDED_ANGLE = 180;
-  const FLOOR_THRESHOLD = 0.1; // ปรับตามความเหมาะสมของระบบ
-
   switch (poseName) {
     case "Push-up": {
-      const angleElbowLeft = angle(5, 7, 9); // ไหล่-ข้อศอก-ข้อมือ ซ้าย
-      const angleBodyLeft = angle(5, 11, 13); // ไหล่-สะโพก-เข่า ซ้าย
-      const angleElbowRight = angle(6, 8, 10); // ไหล่-ข้อศอก-ข้อมือ ขวา
-      const angleBodyRight = angle(6, 12, 14); // ไหล่-สะโพก-เข่า ขวา
+      const leftShoulder = keypoints[5];
+      const rightShoulder = keypoints[6];
+      const leftHip = keypoints[11];
+      const rightHip = keypoints[12];
+      const leftAnkle = keypoints[15];
+      const rightAnkle = keypoints[16];
 
-      const leftHipY = keypoints[11].y;
-      const rightHipY = keypoints[12].y;
-      const leftShoulderY = keypoints[5].y;
-      const rightShoulderY = keypoints[6].y;
+      // ตำแหน่งเฉลี่ยของไหล่ สะโพก ข้อเท้า
+      const shoulder = {
+        x: (leftShoulder.x + rightShoulder.x) / 2,
+        y: (leftShoulder.y + rightShoulder.y) / 2,
+      };
+      const hip = {
+        x: (leftHip.x + rightHip.x) / 2,
+        y: (leftHip.y + rightHip.y) / 2,
+      };
+      const ankle = {
+        x: (leftAnkle.x + rightAnkle.x) / 2,
+        y: (leftAnkle.y + rightAnkle.y) / 2,
+      };
 
-      const isCloseToFloor =
-        leftHipY > FLOOR_THRESHOLD &&
-        rightHipY > FLOOR_THRESHOLD &&
-        leftShoulderY > FLOOR_THRESHOLD &&
-        rightShoulderY > FLOOR_THRESHOLD;
+      // มุมระหว่างไหล่-สะโพก-ข้อเท้า
+      const bodyAlignmentAngle = getAngle(shoulder, hip, ankle);
+      const inPlank = bodyAlignmentAngle > 160;
 
-      const isDownLeft =
-        angleElbowLeft >= MIN_ELBOW_ANGLE &&
-        angleElbowLeft <= MAX_ELBOW_ANGLE &&
-        angleBodyLeft >= MIN_BODY_ANGLE &&
-        angleBodyLeft <= MAX_BODY_ANGLE &&
-        isCloseToFloor;
+      if (!inPlank) {
+        // ยังไม่อยู่ในท่า push-up ที่ถูกต้อง
+        return;
+      }
 
-      const isDownRight =
-        angleElbowRight >= MIN_ELBOW_ANGLE &&
-        angleElbowRight <= MAX_ELBOW_ANGLE &&
-        angleBodyRight >= MIN_BODY_ANGLE &&
-        angleBodyRight <= MAX_BODY_ANGLE &&
-        isCloseToFloor;
+      const averageShoulderY = (leftShoulder.y + rightShoulder.y) / 2;
+      const averageHipY = (leftHip.y + rightHip.y) / 2;
 
-      const isUpLeft =
-        angleElbowLeft >= MIN_ELBOW_EXTENDED_ANGLE &&
-        angleElbowLeft <= MAX_ELBOW_EXTENDED_ANGLE &&
-        angleBodyLeft >= MIN_BODY_ANGLE &&
-        angleBodyLeft <= MAX_BODY_ANGLE;
+      const isDownLeft = averageShoulderY > averageHipY + 50;
+      const isDownRight = averageShoulderY > averageHipY + 50;
 
-      const isUpRight =
-        angleElbowRight >= MIN_ELBOW_EXTENDED_ANGLE &&
-        angleElbowRight <= MAX_ELBOW_EXTENDED_ANGLE &&
-        angleBodyRight >= MIN_BODY_ANGLE &&
-        angleBodyRight <= MAX_BODY_ANGLE;
+      const isUpLeft = averageShoulderY < averageHipY + 20;
+      const isUpRight = averageShoulderY < averageHipY + 20;
 
       detectBothSides(isUpLeft, isDownLeft, isUpRight, isDownRight, "Push-up");
-
       break;
     }
 
