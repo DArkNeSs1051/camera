@@ -76,6 +76,23 @@ export const handlePose = (props: PoseDetection) => {
     downCondRight: boolean,
     poseName: string
   ) => {
+    // ตรวจสอบว่ามีคีย์พอยต์ที่จำเป็นหรือไม่
+    if (!keypoints || keypoints.length < 17) {
+      return; // ไม่มีข้อมูลเพียงพอสำหรับการตรวจจับ
+    }
+    
+    // ตรวจสอบคะแนนความเชื่อมั่น (confidence score) ของคีย์พอยต์หลัก
+    const requiredKeypoints = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+    const minConfidence = 0.3;
+    
+    const allKeypointsValid = requiredKeypoints.every(
+      (i) => keypoints[i] && (!keypoints[i].score || keypoints[i].score > minConfidence)
+    );
+    
+    if (!allKeypointsValid) {
+      return; // คีย์พอยต์บางจุดมีความเชื่อมั่นต่ำเกินไป
+    }
+
     if (downCondLeft || downCondRight) {
       if (!isHoldingRef.current) {
         holdStart.current = Date.now();
@@ -115,6 +132,11 @@ export const handlePose = (props: PoseDetection) => {
   };
 
   const poseName = selectedPoseRef.current;
+  
+  // ตรวจสอบว่ามีการเลือกท่าหรือไม่
+  if (!poseName || poseName === "") {
+    return; // ไม่มีการเลือกท่า
+  }
 
   const MIN_ELBOW_ANGLE = 60;
   const MAX_ELBOW_ANGLE = 120;
@@ -150,15 +172,29 @@ export const handlePose = (props: PoseDetection) => {
     case "Bench Press": {
       const angleElbowLeft = angle(5, 7, 9);
       const angleElbowRight = angle(6, 8, 10);
-      const angleShoulderLeft = angle(11, 5, 7);
-      const angleShoulderRight = angle(12, 6, 8);
-      const isLeftValid = Math.abs(angleElbowLeft - angleShoulderLeft) > 15;
-      const isRightValid = Math.abs(angleElbowRight - angleShoulderRight) > 15;
+      
+      // ตรวจสอบว่าผู้อยู่ในท่านอนหรือไม่ (ไหล่และสะโพกอยู่ในระดับเดียวกัน)
+      const leftShoulderY = get(5).y;
+      const rightShoulderY = get(6).y;
+      const leftHipY = get(11).y;
+      const rightHipY = get(12).y;
+      
+      // ตรวจสอบว่าไหล่และสะโพกอยู่ในแนวเดียวกัน (นอนราบ)
+      const isLyingDown = 
+        Math.abs(leftShoulderY - leftHipY) < 30 && 
+        Math.abs(rightShoulderY - rightHipY) < 30;
+      
+      // ตรวจสอบว่าแขนอยู่ในตำแหน่งที่ถูกต้อง (ข้อศอกงอลงและเหยียดขึ้น)
+      const isLeftArmDown = angleElbowLeft < 90 && isLyingDown;
+      const isRightArmDown = angleElbowRight < 90 && isLyingDown;
+      const isLeftArmUp = angleElbowLeft > 160 && isLyingDown;
+      const isRightArmUp = angleElbowRight > 160 && isLyingDown;
+      
       detectBothSides(
-        angleElbowLeft > 160 && isLeftValid,
-        angleElbowLeft < 90 && isLeftValid,
-        angleElbowRight > 160 && isRightValid,
-        angleElbowRight < 90 && isRightValid,
+        isLeftArmUp,
+        isLeftArmDown,
+        isRightArmUp,
+        isRightArmDown,
         "Bench Press"
       );
       break;
@@ -166,11 +202,22 @@ export const handlePose = (props: PoseDetection) => {
     case "Squat": {
       const angleKneeLeft = angle(11, 13, 15);
       const angleKneeRight = angle(12, 14, 16);
+      const angleHipLeft = angle(5, 11, 13);
+      const angleHipRight = angle(6, 12, 14);
+      
+      // ตรวจสอบว่าเข่างอและสะโพกงอ (ท่าลง)
+      const isDownLeft = angleKneeLeft < 120 && angleHipLeft < 120;
+      const isDownRight = angleKneeRight < 120 && angleHipRight < 120;
+      
+      // ตรวจสอบว่าเข่าและสะโพกเหยียดตรง (ท่าขึ้น)
+      const isUpLeft = angleKneeLeft > 160 && angleHipLeft > 160;
+      const isUpRight = angleKneeRight > 160 && angleHipRight > 160;
+      
       detectBothSides(
-        angleKneeLeft > 160,
-        angleKneeLeft > 60 && angleKneeLeft < 120,
-        angleKneeRight > 160,
-        angleKneeRight > 60 && angleKneeRight < 120,
+        isUpLeft,
+        isDownLeft,
+        isUpRight,
+        isDownRight,
         "Squat"
       );
       break;
@@ -178,22 +225,56 @@ export const handlePose = (props: PoseDetection) => {
     case "Leg Lunge": {
       const angleKneeLeft = angle(11, 13, 15);
       const angleKneeRight = angle(12, 14, 16);
+      const angleHipLeft = angle(5, 11, 13);
+      const angleHipRight = angle(6, 12, 14);
+      
+      // ตรวจสอบว่าเข่าข้างหนึ่งงอและอีกข้างเหยียด (ท่าลง)
+      const isLeftLegForward = angleKneeLeft < 120 && angleKneeRight > 140;
+      const isRightLegForward = angleKneeRight < 120 && angleKneeLeft > 140;
+      
+      // ตรวจสอบว่าทั้งสองขาเหยียดตรง (ท่าขึ้น)
+      const isBothLegsUp = angleKneeLeft > 160 && angleKneeRight > 160;
+      
       detectBothSides(
-        angleKneeLeft > 160,
-        angleKneeLeft > 60 && angleKneeLeft < 120,
-        angleKneeRight > 160,
-        angleKneeRight > 60 && angleKneeRight < 120,
+        isBothLegsUp,
+        isLeftLegForward || isRightLegForward,
+        isBothLegsUp,
+        isLeftLegForward || isRightLegForward,
         "Leg Lunge"
       );
       break;
     }
     case "Plank":
     case "Side Plank": {
-      const leftAngle = getAngle(get(5), get(11), get(15));
-      const rightAngle = getAngle(get(6), get(12), get(16));
-      const isHoldingPose =
-        (leftAngle > 160 && leftAngle < 200) ||
-        (rightAngle > 160 && rightAngle < 200);
+      // ตรวจสอบว่ามีคีย์พอยต์ที่จำเป็นหรือไม่
+      if (!keypoints || keypoints.length < 17) {
+        return;
+      }
+      
+      let isHoldingPose = false;
+      
+      if (poseName === "Plank") {
+        // ตรวจสอบว่าลำตัวตรง (ไหล่-สะโพก-เข่า)
+        const leftBodyAngle = getAngle(get(5), get(11), get(13));
+        const rightBodyAngle = getAngle(get(6), get(12), get(14));
+        
+        // ตรวจสอบว่าข้อศอกงอ (ไหล่-ข้อศอก-ข้อมือ)
+        const leftElbowAngle = getAngle(get(5), get(7), get(9));
+        const rightElbowAngle = getAngle(get(6), get(8), get(10));
+        
+        isHoldingPose = 
+          (leftBodyAngle > 160 && rightBodyAngle > 160) && // ลำตัวตรง
+          (leftElbowAngle < 120 && rightElbowAngle < 120); // ข้อศอกงอ
+      } else { // Side Plank
+        // ตรวจสอบว่าลำตัวตรงในแนวด้านข้าง
+        const leftSideAngle = getAngle(get(5), get(11), get(15));
+        const rightSideAngle = getAngle(get(6), get(12), get(16));
+        
+        isHoldingPose = 
+          (leftSideAngle > 160 && leftSideAngle < 200) ||
+          (rightSideAngle > 160 && rightSideAngle < 200);
+      }
+      
       if (isHoldingPose) {
         if (!isHolding) {
           holdStart.current = now;
@@ -203,7 +284,7 @@ export const handlePose = (props: PoseDetection) => {
         }
       } else if (isHolding) {
         setSummary(
-          `คุณทำ ${selectedPose} ได้ ${Math.floor(plankTime / 60)} นาที ${
+          `คุณทำ ${poseName} ได้ ${Math.floor(plankTime / 60)} นาที ${
             plankTime % 60
           } วินาที`
         );
@@ -214,12 +295,22 @@ export const handlePose = (props: PoseDetection) => {
       break;
     }
     case "Leg Raises": {
+      // ตรวจสอบว่ามีคีย์พอยต์ที่จำเป็นหรือไม่
+      if (!keypoints || keypoints.length < 17) {
+        return;
+      }
+      
       const leftLegAngle = getAngle(get(11), get(13), get(15));
       const rightLegAngle = getAngle(get(12), get(14), get(16));
+      
+      // ตรวจสอบว่าขาเหยียดตรงและยกขึ้น (ท่าขึ้น)
       const leftLegUp = leftLegAngle > 160 && get(15).y < get(11).y;
       const rightLegUp = rightLegAngle > 160 && get(16).y < get(12).y;
+      
+      // ตรวจสอบว่าขาเหยียดตรงและลดลง (ท่าลง)
       const leftLegDown = leftLegAngle > 160 && get(15).y > get(11).y + 40;
       const rightLegDown = rightLegAngle > 160 && get(16).y > get(12).y + 40;
+      
       detectBothSides(
         leftLegDown,
         leftLegUp,
@@ -274,13 +365,28 @@ export const handlePose = (props: PoseDetection) => {
       break;
     }
     case "Dumbbell Bent-Over Rows": {
+      // ตรวจสอบมุมของสะโพก (ต้องก้มตัวลง)
+      const leftHipAngle = angle(5, 11, 13);
+      const rightHipAngle = angle(6, 12, 14);
+      
+      // ตรวจสอบว่าอยู่ในท่าก้มตัว (bent over)
+      const isBentOver = leftHipAngle < 140 && rightHipAngle < 140;
+      
+      // ตรวจสอบการดึงแขน (row)
       const leftRow = angle(5, 7, 9) < 90;
       const rightRow = angle(6, 8, 10) < 90;
+      
+      // ตรวจจับท่าเฉพาะเมื่ออยู่ในท่าก้มตัวเท่านั้น
+      const leftArmDown = !leftRow && isBentOver;
+      const leftArmUp = leftRow && isBentOver;
+      const rightArmDown = !rightRow && isBentOver;
+      const rightArmUp = rightRow && isBentOver;
+      
       detectBothSides(
-        !leftRow,
-        leftRow,
-        !rightRow,
-        rightRow,
+        leftArmDown,
+        leftArmUp,
+        rightArmDown,
+        rightArmUp,
         "Dumbbell Bent-Over Rows"
       );
       break;
