@@ -19,9 +19,9 @@ export const drawSkeleton = (
   ctx: CanvasRenderingContext2D,
   keypoints: Point[]
 ) => {
-  ctx.lineWidth = 2;
-  ctx.strokeStyle = "#00FFFF";
-  ctx.fillStyle = "#00FF00";
+  ctx.lineWidth = 4; // เพิ่มความหนาของเส้น (เปลี่ยนจาก 2 เป็น 4 หรือมากกว่านี้ตามต้องการ)
+  ctx.strokeStyle = "#FF0000"; // เปลี่ยนสีเส้นเป็นสีแดง
+  ctx.fillStyle = "#00FF00"; // จุดยังคงเป็นสีเขียว
 
   SKELETON_CONNECTIONS.forEach(([i, j]) => {
     const kp1 = keypoints[i];
